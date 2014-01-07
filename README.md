@@ -5,9 +5,9 @@ Second generation of Genome Designer
 
 ## Dependencies
 
+* Postgresql 9.3 (only this version has been tested)
 * R (for Picard)
-
-TODO: Add other deps.
+* Python deps: See requirements.txt / instructions below
 
 ## Installation
 
@@ -170,6 +170,7 @@ See instructions for setting up PostgresSQL database:
 *NOTE:* Be sure to make local db config changes in `conf/local_settings.py`.
 
 In order to run tests with Postgres, your user will need CREATE permissions.
+Otherwise you might get an error creating a database.
 You can grant these by logging into the Posgres shell and running:
 
     ALTER USER django CREATEDB;
@@ -200,6 +201,10 @@ To run a single test module, run:
 To run a single test case, e.g.:
 
     (venv)$ python manage.py test scripts/tests/test_alignment_pipeline.py:TestAlignmentPipeline.test_create_alignment_groups_and_start_alignments
+
+To reuse the Postgresql database, wiping it rather than destroying and creating each time, use:
+
+    (venv)$ REUSE_DB=1 ./manage.py test
 
 
 ### Adding Tests
