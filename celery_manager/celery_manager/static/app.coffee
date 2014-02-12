@@ -3,21 +3,36 @@
 @CeleryManager.classes = @CeleryManager.classes || {}
 
 class CeleryManager.HomeView extends Backbone.View
+  events:
+    "click .test-button": "test"
   initialize: =>
     @template = _.template $("#home-view-template").text()
     @render()
 
-  success: (header, message) =>
-    @$("#message").text message
-    @$("#message-header").text header
-    @$("#message-box").removeClass("alert-danger hidden").addClass("alert-success")
-    @$("#save-button").attr "disabled", null
+  success: (fieldset, message) =>
+    alert message
+    fieldset.parents(".panel").removeClass("panel-danger").addClass("panel-success")
 
-  error: (header, message) =>
-    @$("#message").text message
-    @$("#message-header").text header
-    @$("#message-box").removeClass("alert-success hidden").addClass("alert-danger").show()
-    @$("#save-button").attr "disabled", disabled
+  error: (fieldset, message) =>
+    alert message
+    fieldset.parents(".panel").removeClass("panel-success").addClass("panel-danger")
+
+  test: (e) =>
+    fieldset = $(e.target).parents("fieldset")
+    $.ajax
+      url: fieldset.data("test-url")
+      type: 'post'
+      data: fieldset.serialize()
+      success: (data, textStatus, jqXHR) =>
+        if data.status == "error"
+          @error fieldset, data.message
+        else
+          @success fieldset, "Passed test!"
+      beforeSend: ->
+        fieldset.block(message: null, css: {opacity: 0}).spin()
+      complete: ->
+        fieldset.unblock().spin false
+    return false
 
   render: =>
     @$el.append @template()
@@ -35,28 +50,6 @@ class CeleryManager.HomeView extends Backbone.View
         required: true,
       password: 
         required: false
-
-    @$("#test-button").click =>
-      $.ajax
-        url: CeleryManager.config.urlRoot + 'test'
-        type: 'post'
-        data: @$("form").serialize()
-        success: (data, textStatus, jqXHR) =>
-          if data.status == "error"
-            @error "Failed the test!", data.message
-          else
-            @success "Passed the test!", "Click Save to continue"
-      return false
-
-    @$("#save-button").click =>
-      $.ajax
-        url: CeleryManager.config.urlRoot + 'save'
-        type: 'post'
-        data: @$("form").serialize()
-        success: (data, textStatus, jqXHR) =>
-          if data.status == "success"
-            @success "Saved!", ""
-      return false
 
 class CeleryManager.Router extends Backbone.Router
   routes:

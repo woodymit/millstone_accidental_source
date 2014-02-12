@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 from django.views.decorators.csrf import ensure_csrf_cookie
 import psycopg2
+from boto.s3.connection import Key, S3Connection
 
 import subprocess
 import json
@@ -29,6 +30,10 @@ def home(request):
     exec code in config
 
     c = {
+        'key': config.get('AWS_SERVER_PUBLIC_KEY', ''),
+        'secret': config.get('AWS_SERVER_SECRET_KEY', ''),
+        'bucket': config.get('S3_BUCKET', ''),
+        'dbname': config.get('DATABASES', {}).get('default', {}).get('NAME', 'genome_designer'),
         'dbname': config.get('DATABASES', {}).get('default', {}).get('NAME', 'genome_designer'),
         'user': config.get('DATABASES', {}).get('default', {}).get('USER', 'genome_designer'),
         'password': config.get('DATABASES', {}).get('default', {}).get('PASSWORD', ''),
@@ -37,7 +42,32 @@ def home(request):
     return render(request, 'base.html', c)
 
 @require_POST
-def test(request):
+def test_s3(request):
+    key = request.POST['key']
+    secret = request.POST['secret']
+    bucket = request.POST['bucket']
+
+    try:
+        S3 = S3Connection(key, secret)
+        aws_bucket = S3.get_bucket(bucket)
+    except Exception as e:
+        print e
+        response = {
+            'status': 'error',
+            'message': "Cannot connect to S3: " + str(e),
+        }
+        return HttpResponse(json.dumps(response),
+            content_type='application/json')
+
+    response = {
+        'status': 'success',
+    }
+    return HttpResponse(json.dumps(response),
+        content_type='application/json')
+
+
+@require_POST
+def test_worker(request):
     user = request.POST['user']
     password = request.POST['password']
     host = request.POST['host']
@@ -82,6 +112,9 @@ def save(request):
     password = request.POST['password']
     host = request.POST['host']
     dbname = request.POST['dbname']
+    key = request.POST['key']
+    bucket = request.POST['bucket']
+    secret = request.POST['secret']
 
     db = {
         'default': {
@@ -96,6 +129,9 @@ def save(request):
     rabbitmq = "amqp://%s:%s@%s:5672//" % (user, password, host)
     config = "DATABASES = %s \n" % repr(db)
     config += "BROKER_URL = %s \n" % repr(rabbitmq)
+    config += "S3_BUCKET = %r \n" % repr(bucket)
+    config += "AWS_SERVER_PUBLIC_KEY = %r \n" % repr(key)
+    config += "AWS_SERVER_SECRET_KEY = %r \n" % repr(secret)
     path = get_local_settings_path()
 
     with open(path, "w") as f:
