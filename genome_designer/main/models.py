@@ -562,20 +562,32 @@ class ExperimentSample(UniqueUidModelMixin):
     # Human-readable identifier.
     label = models.CharField('Sample Name', max_length=256)
 
-    # Human-readable sample group that this value is in.
-    group = models.CharField('Plate/Group', max_length=256)
-
-    # Human-readable 'position' (well number, etc) that this sample is in
-    # within a group
-    well = models.CharField('Position/Well', max_length=256)
-
-    # Number of reads in the sample.
-    num_reads = models.BigIntegerField('# Reads', default=-1)
-
     # The datasets associated with this sample. The semantic sense of the
     # dataset can be determined from the Dataset.type field.
     dataset_set = models.ManyToManyField('Dataset', blank=True, null=True,
         verbose_name="Datasets")
+
+    # User speciified data fields corresponding to the sample.
+    # Examples: Growth rate, GFP amount, phenotype, # of mage cycles, etc.
+    data = PostgresJsonField()
+
+    def __getattr__(self, name):
+        """Automatically called if an attribute is not found in the typical
+        place.
+
+        Our implementation checks the data dict, return the string 'undefined'
+        if the value is not found.
+
+        NOTE: Typically __getattr__ should raise an AttributeError if the value
+        cannot be found, but the noisy nature or our data means returning
+        'undefined' is more correct.
+
+        See: http://docs.python.org/2/reference/datamodel.html#object.__getattr__
+        """
+        try:
+            return self.data[name]
+        except:
+            raise AttributeError
 
     @property
     def status(self):
