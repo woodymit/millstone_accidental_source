@@ -55,8 +55,7 @@ class TestGetVariantList(TestCase):
         self.ref_genome = ReferenceGenome.objects.create(project=self.project,
                 label='refgenome', num_chromosomes=1, num_bases=1000)
         self.sample_obj_1 = ExperimentSample.objects.create(
-                project=self.project, label='fake sample', group='Plate 1',
-                well='A01', num_reads=100)
+                project=self.project, label='fake sample')
 
         # Make sure the reference genome has the required vcf keys.
         initialize_filter_key_map(self.ref_genome)
