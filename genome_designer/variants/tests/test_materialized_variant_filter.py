@@ -73,19 +73,11 @@ class BaseTestVariantFilterTestCase(TestCase):
 
         self.sample_obj_1 = ExperimentSample.objects.create(
                 project=self.project,
-                label='fake sample',
-                group='Plate 1',
-                well='A01',
-                num_reads=100,
-        )
+                label='fake sample')
 
         self.sample_obj_2 = ExperimentSample.objects.create(
                 project=self.project,
-                label='fake sample 2',
-                group='Plate 1',
-                well='A02',
-                num_reads=100,
-        )
+                label='fake sample 2')
 
         # Only variants that are part of a set will be returned in the melted
         # view. If a Variant is not associatd with a VariantSet, nor is it
