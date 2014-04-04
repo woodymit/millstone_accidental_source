@@ -203,28 +203,22 @@ def bootstrap_fake_data():
     ### Create some ExperimentSamples.
 
     # Create some samples without backing data just to explore the UI.
-    ExperimentSample.objects.get_or_create(
+    ExperimentSample.objects.create(
             project=test_project,
             label='C321D_MiSeq',
-            group='Plate 1',
-            well='A01',
-            num_reads=25029296,
+            data = {'well': 'A01'}
     )
 
-    ExperimentSample.objects.get_or_create(
+    ExperimentSample.objects.create(
             project=test_project,
             label='C321D Fixed 01',
-            group='Plate 2',
-            well='A01',
-            num_reads=12345,
+            data = {'well': 'A02'}
     )
 
-    ExperimentSample.objects.get_or_create(
+    ExperimentSample.objects.create(
             project=test_project,
             label='C321D Fixed 02',
-            group='Plate 2',
-            well='A02',
-            num_reads=897213,
+            data = {'well': 'A03'}
     )
 
     # Create some samples with backing data.

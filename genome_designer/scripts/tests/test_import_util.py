@@ -168,6 +168,8 @@ class TestImportSamplesFromTargetsFile(TestCase):
         # Check that the metadata was inserted successfully.
         for s in samples:
             self.assertTrue('Parent_Samples' in s.data)
+            self.assertTrue('Growth_Rate' in s.data)
+            self.assertTrue('Cycle' in s.data)
 
     def test_import_samples__bad_input(self):
         """Input data with duplicated filenames.
