@@ -150,6 +150,25 @@ class TestImportSamplesFromTargetsFile(TestCase):
             import_samples_from_targets_file(project,
                     UploadedFile(targets_file_fh))
 
+    def test_import_samples__extra_cols(self):
+        """Tests importing samples from a template file that has 
+        extra columns.
+        """
+        TARGETS_TEMPLATE_FILEPATH = os.path.join(IMPORT_UTIL_TEST_DATA,
+                'sample_list_targets_extra_col.tsv')
+
+        # Grab any project from the database.
+        project = Project.objects.all()[0]
+
+        # Perform the import.
+        with open(TARGETS_TEMPLATE_FILEPATH) as targets_file_fh:
+            samples = import_samples_from_targets_file(project,
+                    UploadedFile(targets_file_fh))
+
+        # Check that the metadata was inserted successfully.
+        for s in samples:
+            self.assertTrue('Parent_Samples' in s.data)
+
     def test_import_samples__bad_input(self):
         """Input data with duplicated filenames.
         """
