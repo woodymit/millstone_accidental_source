@@ -269,6 +269,9 @@ def bootstrap_fake_data():
                 project=test_project,
                 label='Sample %d' % i)
 
+        sample_obj.data['well'] = 'A0%d' % i+1
+        sample_obj.save()
+
         # Add raw reads to each sample.
         copy_and_add_dataset_source(sample_obj, Dataset.TYPE.FASTQ1,
                 Dataset.TYPE.FASTQ1, FullVCFTestSet.FASTQ1[i])

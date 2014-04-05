@@ -11,10 +11,10 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from main.models import *
 from variants import materialized_view_manager
 
-def main():
-    ref = ReferenceGenome.objects.get(alignmentgroup__uid='c359d2cf')
+def main(ag):
+    ref = ReferenceGenome.objects.get(alignmentgroup__uid=ag)
     mvm = materialized_view_manager.MeltedVariantMaterializedViewManager(ref)
     mvm.create()
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1])
