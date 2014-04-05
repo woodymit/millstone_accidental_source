@@ -6,6 +6,8 @@ code than the original implementation; thus it makes sense to re-implement
 from scratch.
 """
 
+import pprint
+
 from django.db import connection
 from sympy.logic import boolalg
 
@@ -180,6 +182,9 @@ class VariantFilterEvaluator(object):
         cursor.execute(sql_statement, where_clause_args)
         result_list = [dict(zip([col[0].upper() for col in cursor.description], row))
                 for row in cursor.fetchall()]
+
+        pp = pprint.PrettyPrinter(depth=6)
+        pp.pprint(result_list)
         return result_list
 
     def _select_clause(self):
