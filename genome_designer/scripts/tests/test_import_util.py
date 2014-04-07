@@ -14,7 +14,6 @@ from main.models import Project
 from main.models import ReferenceGenome
 from main.models import Variant
 from main.models import VariantSet
-from scripts.dynamic_snp_filter_key_map import initialize_filter_key_map
 from scripts.import_util import DataImportError
 from scripts.import_util import import_reference_genome_from_local_file
 from scripts.import_util import import_samples_from_targets_file
@@ -201,8 +200,6 @@ class TestImportVariantSetFromVCFFile(TestCase):
                 title='Test Project')
         self.ref_genome = ReferenceGenome.objects.create(project=test_project,
                 label='refgenome', num_chromosomes=1, num_bases=1000)
-
-        initialize_filter_key_map(self.ref_genome)
 
 
 

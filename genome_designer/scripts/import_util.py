@@ -35,6 +35,7 @@ from main.model_utils import clean_filesystem_location
 from main.s3 import project_files_needed
 from scripts.vcf_parser import extract_raw_data_dict
 from scripts.vcf_parser import get_or_create_variant
+from scripts.util import uppercase_underscore
 from settings import PWD
 from settings import EMAIL
 
@@ -394,7 +395,8 @@ def import_samples_from_targets_file(project, targets_file):
         # Add extra metadata columns.
         for field, value in row.iteritems():
             if field not in REQUIRED_SAMPLE_HEADER_PART:
-                experiment_sample.data[field] = str(value)
+                clean_field = 'SAMPLE_'+uppercase_underscore(field)
+                experiment_sample.data[clean_field] = str(value)
 
         experiment_sample.save()
         experiment_samples.append(experiment_sample)

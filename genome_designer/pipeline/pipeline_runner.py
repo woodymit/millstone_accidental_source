@@ -14,6 +14,7 @@ from celery import task
 
 from main.celery_util import assert_celery_running
 from main.models import AlignmentGroup
+from main.models import ReferenceGenome
 from main.models import Dataset
 from main.models import ExperimentSampleToAlignment
 from pipeline.read_alignment import align_with_bwa_mem
@@ -122,6 +123,11 @@ def run_pipeline(alignment_group_label, ref_genome, sample_list):
     # Now we aggregate the alignments that need to be run, collecting their
     # signatures in a Celery group so that these alignments can be run in
     # parallel.
+    # Before we do so, let's update the ref genome object.
+    ref_genome = ReferenceGenome.objects.get(uid=ref_genome.uid)
+    print 'AT PIPELINE SIGNATURE BUILD: CURRENT STATE OF VARIANT KEY MAP (%s)' % ref_genome.uid, ref_genome.variant_key_map
+
+
     alignment_task_signatures = [align_with_bwa_mem.si(
                     alignment_group, sample_alignment,
                     project=ref_genome.project)
@@ -151,7 +157,15 @@ def run_pipeline(alignment_group_label, ref_genome, sample_list):
                 variant_caller_group,
                 pipeline_completion)
 
+    ref_genome = ReferenceGenome.objects.get(id=ref_genome.id)
+    print 'AT PIPELINE START: CURRENT STATE OF VARIANT KEY MAP (%s)' % (
+            ref_genome.uid), ref_genome.variant_key_map
+    # NOTE DBG->GK: VARIANT_KEY_MAP is not correct in celery workers
+    # unless this save happens.
+    ref_genome.save()
+
     # Run the pipeline.
+    print 'SENDING ALIGNMENT AND CALLING PIPELINE TO CELERY...'
     whole_pipeline.apply_async()
 
     return alignment_group
