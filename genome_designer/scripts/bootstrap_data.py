@@ -269,7 +269,7 @@ def bootstrap_fake_data():
                 project=test_project,
                 label='Sample %d' % i)
 
-        sample_obj.data['well'] = 'A0%d' % i+1
+        sample_obj.data['well'] = 'A0%d' % (i+1)
         sample_obj.save()
 
         # Add raw reads to each sample.

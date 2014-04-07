@@ -14,6 +14,7 @@ from celery import task
 from main.models import get_dataset_with_type
 from main.models import AlignmentGroup
 from main.models import Dataset
+from main.models import ReferenceGenome
 from main.model_utils import clean_filesystem_location
 from main.s3 import project_files_needed
 from pipeline.read_alignment_util import ensure_bwa_index
@@ -39,6 +40,14 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
         sample_alignment: ExperimentSampleToAlignment. The respective dataset
             is assumed to have been created as well.
     """
+
+    reference_genome = alignment_group.reference_genome
+    print 'BEFORE READ ALIGN: CURRENT STATE OF STALE VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
+
+    reference_genome2 = ReferenceGenome.objects.get(uid=reference_genome.uid)
+    print 'BEFORE READ ALIGN: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome2.uid, reference_genome2.variant_key_map
+
+
     experiment_sample = sample_alignment.experiment_sample
 
     # Grab the reference genome fasta for the alignment.
@@ -307,9 +316,9 @@ def process_sam_bam_file(sample_alignment, reference_genome,
                 ref_genome_fasta_location
             ], stderr=error_output, stdout=fh)
 
-        # Re-index this new bam file. 
+        # Re-index this new bam file.
         subprocess.check_call([
-            SAMTOOLS_BINARY, 'index', final_bam_location], 
+            SAMTOOLS_BINARY, 'index', final_bam_location],
             stderr=error_output)
 
     else:
@@ -327,6 +336,11 @@ def process_sam_bam_file(sample_alignment, reference_genome,
             'index',
             final_bam_location,
         ], stderr=error_output)
+
+    reference_genome2 = ReferenceGenome.objects.get(id=reference_genome.id)
+    print 'AFTER READ ALIGN: CURRENT STATE OF STALE VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
+    print 'AFTER READ ALIGN: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome2.uid, reference_genome2.variant_key_map
+
 
     return final_bam_location
 

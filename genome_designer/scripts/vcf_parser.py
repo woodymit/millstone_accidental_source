@@ -9,6 +9,7 @@ import vcf
 
 from main.models import get_dataset_with_type
 from main.models import ExperimentSample
+from main.models import ReferenceGenome
 from main.models import Variant
 from main.models import VariantCallerCommonData
 from main.models import VariantAlternate
@@ -75,8 +76,8 @@ def parse_vcf(vcf_dataset, alignment_group):
         # First, update the reference_genome's key list with any new
         # keys from this VCF.
         update_filter_key_map(reference_genome, vcf_reader)
-
-
+        # Update the reference genome.
+        reference_genome = ReferenceGenome.objects.get(pk=reference_genome.id)
 
         for record_idx, record in enumerate(vcf_reader):
             print 'vcf_parser: Parsing %d out of %d' % (
@@ -188,7 +189,7 @@ def get_or_create_variant(reference_genome, vcf_record, vcf_dataset,
     # We don't want to search by type above, but we do want to save
     # the type here. There are weird cases where we might be overwriting
     # the type (i.e. two SNVs with identical ref/alt but different types),
-    # but I think this is OK for now. 
+    # but I think this is OK for now.
     if type:
         variant.type = type
         variant.save()

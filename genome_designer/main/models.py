@@ -50,6 +50,10 @@ from model_utils import make_choices_tuple
 from model_utils import UniqueUidModelMixin
 from model_utils import VisibleFieldMixin
 from settings import TOOLS_DIR
+from scripts.filter_key_map_constants import MAP_KEY__ALTERNATE
+from scripts.filter_key_map_constants import MAP_KEY__COMMON_DATA
+from scripts.filter_key_map_constants import MAP_KEY__EVIDENCE
+from scripts.filter_key_map_constants import MAP_KEY__EXPERIMENT_SAMPLE
 from scripts.util import uppercase_underscore
 
 BGZIP_BINARY = '%s/tabix/bgzip' % TOOLS_DIR
@@ -451,8 +455,8 @@ class ReferenceGenome(UniqueUidModelMixin):
     dataset_set = models.ManyToManyField('Dataset', blank=True, null=True,
         verbose_name="Datasets")
 
-    # a key/value list of all possible VCF fields, stored as a PostgresJsonField
-    # and dynamically updated by dynamic_snp_filter_key_map.py
+    # a key/value list of all possible VCF and sample metadata fields, stored
+    # as a JsonField and dynamically updated by dynamic_snp_filter_key_map.py
     variant_key_map = PostgresJsonField()
 
     # Bit that indicates whether the materialized view is up to date.
@@ -553,13 +557,17 @@ class ReferenceGenome(UniqueUidModelMixin):
                 type=Dataset.TYPE.REFERENCE_GENOME_GENBANK).exists()
 
     def get_variant_caller_common_map(self):
-        return self.variant_key_map['snp_caller_common_data']
+        return self.variant_key_map[MAP_KEY__COMMON_DATA]
 
     def get_variant_alternate_map(self):
-        return self.variant_key_map['snp_alternate_data']
+        return self.variant_key_map[MAP_KEY__ALTERNATE]
 
     def get_variant_evidence_map(self):
-        return self.variant_key_map['snp_evidence_data']
+        return self.variant_key_map[MAP_KEY__EVIDENCE]
+
+    def get_experiment_sample_map(self):
+        return self.variant_key_map[MAP_KEY__EXPERIMENT_SAMPLE]
+
 
     @classmethod
     def get_field_order(clazz, **kwargs):
