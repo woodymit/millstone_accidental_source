@@ -14,6 +14,7 @@ from celery import task
 from main.models import get_dataset_with_type
 from main.models import AlignmentGroup
 from main.models import Dataset
+from main.models import ExperimentSampleToAlignment
 from main.models import ReferenceGenome
 from main.model_utils import clean_filesystem_location
 from main.s3 import project_files_needed
@@ -40,13 +41,18 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
         sample_alignment: ExperimentSampleToAlignment. The respective dataset
             is assumed to have been created as well.
     """
+    sample_alignment = ExperimentSampleToAlignment.objects.get(id=sample_alignment.id)
+    alignment_group = AlignmentGroup.objects.get(id=alignment_group.id)
 
     reference_genome = alignment_group.reference_genome
     print 'BEFORE READ ALIGN: CURRENT STATE OF STALE VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
 
-    reference_genome2 = ReferenceGenome.objects.get(uid=reference_genome.uid)
-    print 'BEFORE READ ALIGN: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome2.uid, reference_genome2.variant_key_map
+    reference_genome = ReferenceGenome.objects.get(uid=reference_genome.uid)
+    print 'BEFORE READ ALIGN: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
 
+
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 0 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
     experiment_sample = sample_alignment.experiment_sample
 
@@ -61,17 +67,24 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
     bwa_dataset.status = Dataset.STATUS.COMPUTING
     bwa_dataset.save()
 
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 1 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
+
     # Create a file that we'll write stderr to.
     error_path = os.path.join(sample_alignment.get_model_data_dir(),
             'bwa_align.error')
     error_output = open(error_path, 'w')
 
     # The alignment group is now officially ALIGNING.
-    if alignment_group.status != AlignmentGroup.STATUS.ALIGNING:
-        alignment_group.status = AlignmentGroup.STATUS.ALIGNING
-        alignment_group.start_time = datetime.now()
-        alignment_group.end_time = None
-        alignment_group.save()
+    # if alignment_group.status != AlignmentGroup.STATUS.ALIGNING:
+    #     alignment_group.status = AlignmentGroup.STATUS.ALIGNING
+    #     alignment_group.start_time = datetime.now()
+    #     alignment_group.end_time = None
+    #     alignment_group.save()
+
+
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 2 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
     error_output.write(
             "==START OF ALIGNMENT PIPELINE FOR %s, (%s) ==" % (
@@ -138,9 +151,16 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
                     stdout=fh, stderr=error_output,
                     shell=True, executable=BASH_PATH)
 
+        rg = ReferenceGenome.objects.get(id=reference_genome.id)
+        print ('STATE 3 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
+
         # Do several layers of processing on top of the initial alignment.
         result_bam_file = process_sam_bam_file(sample_alignment,
                 alignment_group.reference_genome, output_bam, error_output)
+
+
+        rg = ReferenceGenome.objects.get(id=reference_genome.id)
+        print ('STATE 4 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
         # Add the resulting file to the dataset.
         bwa_dataset.filesystem_location = clean_filesystem_location(
@@ -150,6 +170,9 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
         # Add track to JBrowse.
         add_bam_file_track(alignment_group.reference_genome, sample_alignment,
                 Dataset.TYPE.BWA_ALIGN)
+
+        rg = ReferenceGenome.objects.get(id=reference_genome.id)
+        print ('STATE 5 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
         bwa_dataset.status = Dataset.STATUS.READY
         bwa_dataset.save()
@@ -179,6 +202,9 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
                 filesystem_location=clean_filesystem_location(error_path))
         sample_alignment.dataset_set.add(error_dataset)
         sample_alignment.save()
+
+        rg = ReferenceGenome.objects.get(id=reference_genome.id)
+        print ('STATE 6 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
         return sample_alignment
 
@@ -214,7 +240,8 @@ def process_sam_bam_file(sample_alignment, reference_genome,
     Returns:
         The path of the final .bam file.
     """
-
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3a (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
     experiment_sample = sample_alignment.experiment_sample
 
     # For any keys missing from the processing mask, give them the values from
@@ -241,6 +268,9 @@ def process_sam_bam_file(sample_alignment, reference_genome,
     # TODO: Make this more robust, or better yet, pipe things together.
     assert os.path.splitext(bam_file_location)[1] == '.bam'
 
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3b (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
+
     # 2. Sort
     sorted_output_name = os.path.splitext(bam_file_location)[0] + '.sorted'
     sorted_bam_file_location = sorted_output_name + '.bam'
@@ -260,11 +290,17 @@ def process_sam_bam_file(sample_alignment, reference_genome,
             sorted_bam_file_location,
         ], stderr=error_output)
 
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3c (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
+
     # 3. Compute insert size metrics
     # Subsequent steps screw up pairing info so this has to 
     # be done here. 
     if effective_mask['compute_insert_metrics']:
         compute_insert_metrics(sorted_bam_file_location, sample_alignment, error_output)
+
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3d (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
     # 4. Add groups
     grouped_output_name= (
@@ -274,6 +310,9 @@ def process_sam_bam_file(sample_alignment, reference_genome,
     if effective_mask['add_groups']:
         add_groups(experiment_sample, sorted_bam_file_location, grouped_bam_file_location,
                 error_output)
+
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3e (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
     # 5. Perform realignment accounting for indels.
     realigned_bam_file_location = (
@@ -295,6 +334,9 @@ def process_sam_bam_file(sample_alignment, reference_genome,
                 realigned_bam_file_location,
                 error_output
         )
+
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3f (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
     # 6. Add back MD tags for visualization of mismatches by Jbrowse
     if effective_mask['withmd']:
@@ -323,6 +365,9 @@ def process_sam_bam_file(sample_alignment, reference_genome,
 
     else:
         final_bam_location = realigned_bam_file_location
+
+    rg = ReferenceGenome.objects.get(id=reference_genome.id)
+    print ('STATE 3z (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
     # 7. Compute callable loci
     if effective_mask['compute_callable_loci']:
@@ -407,6 +452,11 @@ def realign_given_indels(
 
 
 def compute_insert_metrics(bam_file_location, sample_alignment, stderr=None):
+
+    # rg = ReferenceGenome.objects.get(id=sample_alignment.alignment_group.reference_genome.id)
+    rg = sample_alignment.alignment_group.reference_genome
+    print ('STATE 3c1 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
+
     output = _get_metrics_output_filename(bam_file_location)
     histogram_file = os.path.splitext(bam_file_location)[0] + '.histmet.txt'
     subprocess.check_call([
@@ -426,6 +476,9 @@ def compute_insert_metrics(bam_file_location, sample_alignment, stderr=None):
 
     sample_alignment.dataset_set.add(insert_metrics)
     sample_alignment.save()
+
+    rg = sample_alignment.alignment_group.reference_genome
+    print ('STATE 3c2 (%s)' % rg.uid, rg.variant_key_map['experiment_sample_data'])
 
 
 def compute_callable_loci(reference_genome, sample_alignment, 

@@ -75,9 +75,12 @@ def parse_vcf(vcf_dataset, alignment_group):
 
         # First, update the reference_genome's key list with any new
         # keys from this VCF.
+        reference_genome = ReferenceGenome.objects.get(id=reference_genome.id)
+
+        print 'BEFORE VCF_PARSER UPDATE: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
+
         update_filter_key_map(reference_genome, vcf_reader)
         # Update the reference genome.
-        reference_genome = ReferenceGenome.objects.get(pk=reference_genome.id)
 
         for record_idx, record in enumerate(vcf_reader):
             print 'vcf_parser: Parsing %d out of %d' % (
