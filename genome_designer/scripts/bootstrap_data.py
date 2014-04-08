@@ -206,19 +206,19 @@ def bootstrap_fake_data():
     ExperimentSample.objects.create(
             project=test_project,
             label='C321D_MiSeq',
-            data = {'well': 'A01'}
+            data = {'SAMPLE_WELL': 'A01'}
     )
 
     ExperimentSample.objects.create(
             project=test_project,
             label='C321D Fixed 01',
-            data = {'well': 'A02'}
+            data = {'SAMPLE_WELL': 'A02'}
     )
 
     ExperimentSample.objects.create(
             project=test_project,
             label='C321D Fixed 02',
-            data = {'well': 'A03'}
+            data = {'SAMPLE_WELL': 'A03'}
     )
 
     # Create some samples with backing data.
@@ -269,7 +269,7 @@ def bootstrap_fake_data():
                 project=test_project,
                 label='Sample %d' % i)
 
-        sample_obj.data['well'] = 'A0%d' % (i+1)
+        sample_obj.data['SAMPLE_WELL'] = 'A0%d' % (i+1)
         sample_obj.save()
 
         # Add raw reads to each sample.

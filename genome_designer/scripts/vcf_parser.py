@@ -28,7 +28,9 @@ UNKNOWN_VARIANT_TYPE = 'unknown'
 
 IGNORE_VCF_RECORD_KEYS = [
     # Bug in pyvcf where some alleles are some sort of object rather than str.
-    'alleles'
+    'alleles',
+    # Fake/Pseudo VCFs parsed as CSVs have ID fields, which we are skipping
+    'ID'
 ]
 
 
@@ -80,7 +82,10 @@ def parse_vcf(vcf_dataset, alignment_group):
         print 'BEFORE VCF_PARSER UPDATE: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
 
         update_filter_key_map(reference_genome, vcf_reader)
-        # Update the reference genome.
+        # Update the reference genome and grab it from the db again.
+        reference_genome = ReferenceGenome.objects.get(id=reference_genome.id)
+
+        print 'AFTER VCF_PARSER UPDATE: CURRENT STATE OF FRESH VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
 
         for record_idx, record in enumerate(vcf_reader):
             print 'vcf_parser: Parsing %d out of %d' % (
@@ -198,8 +203,19 @@ def get_or_create_variant(reference_genome, vcf_record, vcf_dataset,
         variant.save()
 
     alts = []
+
+    print 'BEFORE GET_OR_CREATE_VARIANT: CURRENT STATE OF STALE VARIANT KEY MAP (%s)' % reference_genome.uid, reference_genome.variant_key_map
+
     all_alt_keys = reference_genome.get_variant_alternate_map().keys()
+
     raw_alt_keys = [k for k in raw_data_dict.keys() if k in all_alt_keys]
+
+    # Make sure there are no unused keys in this variant, else we probably
+    # have variant key map concurrency issues...
+    missing_keys= set(raw_data_dict.keys()) - set(all_alt_keys)
+    assert(not any(missing_keys) ), (
+            'The following additional per-alt keys were not added to the'
+            ' reference genome: {:s}'.format(missing_keys))
 
     for alt_idx, alt_value in enumerate(alt_values):
 
