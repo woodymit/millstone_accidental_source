@@ -285,6 +285,9 @@ def bootstrap_fake_data():
     full_vcf_alignment_group = run_pipeline(
             'test_align', full_vcf_reference_genome, full_vcf_samples)
 
+    full_vcf_reference_genome = ReferenceGenome.objects.get(
+            id=full_vcf_reference_genome.id)
+
     import_variant_set_from_vcf(full_vcf_reference_genome, 'Designed',
             FullVCFTestSet.TEST_DESIGNED_SNPS)
 
