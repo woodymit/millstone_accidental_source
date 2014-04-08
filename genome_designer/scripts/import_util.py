@@ -213,7 +213,7 @@ def generate_gff_from_genbank(ref_genome):
 
     # SnpEFF takes the name attr, but the BioPython uses the id attr to make its
     # GFF file, so overwrite the id with the name when converting to GFF.
-    
+
     for genome_record in genome_records:
         genome_record.id = genome_record.name
 

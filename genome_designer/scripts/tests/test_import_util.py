@@ -150,7 +150,7 @@ class TestImportSamplesFromTargetsFile(TestCase):
                     UploadedFile(targets_file_fh))
 
     def test_import_samples__extra_cols(self):
-        """Tests importing samples from a template file that has 
+        """Tests importing samples from a template file that has
         extra columns.
         """
         TARGETS_TEMPLATE_FILEPATH = os.path.join(IMPORT_UTIL_TEST_DATA,
@@ -166,9 +166,9 @@ class TestImportSamplesFromTargetsFile(TestCase):
 
         # Check that the metadata was inserted successfully.
         for s in samples:
-            self.assertTrue('Parent_Samples' in s.data)
-            self.assertTrue('Growth_Rate' in s.data)
-            self.assertTrue('Cycle' in s.data)
+            self.assertTrue('SAMPLE_PARENT_SAMPLES' in s.data)
+            self.assertTrue('SAMPLE_GROWTH_RATE' in s.data)
+            self.assertTrue('SAMPLE_CYCLE' in s.data)
 
     def test_import_samples__bad_input(self):
         """Input data with duplicated filenames.

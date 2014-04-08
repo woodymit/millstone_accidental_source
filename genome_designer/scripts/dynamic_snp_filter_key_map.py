@@ -84,7 +84,6 @@ def update_sample_filter_key_map(ref_genome, experiment_sample):
             MAP_KEY__EXPERIMENT_SAMPLE, {}))
 
     for key, value in experiment_sample.data.iteritems():
-        key = 'SAMPLE_' + uppercase_underscore(key)
         inner_map = {}
         inner_map['type'] = 'String'
         inner_map['num'] = 1
