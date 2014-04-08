@@ -212,10 +212,10 @@ def get_or_create_variant(reference_genome, vcf_record, vcf_dataset,
 
     # Make sure there are no unused keys in this variant, else we probably
     # have variant key map concurrency issues...
-    missing_keys= set(raw_data_dict.keys()) - set(all_alt_keys)
-    assert(not any(missing_keys) ), (
-            'The following additional per-alt keys were not added to the'
-            ' reference genome: {:s}'.format(missing_keys))
+    # missing_keys= set(raw_data_dict.keys()) - set(all_alt_keys)
+    # assert(not any(missing_keys) ), (
+    #         'The following additional per-alt keys were not added to the'
+    #         ' reference genome: {:s}'.format(missing_keys))
 
     for alt_idx, alt_value in enumerate(alt_values):
 
