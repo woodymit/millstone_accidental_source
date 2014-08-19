@@ -177,6 +177,10 @@ def get_or_create_variant(reference_genome, vcf_record, vcf_dataset,
     ref_value = raw_data_dict.pop('REF')
     alt_values = raw_data_dict.pop('ALT')
 
+
+    # Make sure the chromosome cited exists for the reference genome
+    
+
     # Try to find an existing Variant, or create it.
     variant, created = Variant.objects.get_or_create(
             reference_genome=reference_genome,

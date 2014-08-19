@@ -9,6 +9,7 @@ from django.conf import settings
 from django.test import TestCase
 
 from utils.import_util import import_reference_genome_from_local_file
+from utils.import_util import copy_dataset_to_entity_data_dir
 from main.models import AlignmentGroup
 from main.models import Chromosome
 from main.models import Dataset
@@ -330,7 +331,8 @@ class TestChromosome(TestCase):
             project = project,
             label = 'alemaker2000')
 
-        dataset_path = clean_filesystem_location('../test_data/yeast_chrom_jkl.fasta')
+        test_dataset_path = os.path.join(settings.PWD, 'test_data/yeast_chrom_jkl.fasta')
+        dataset_path = copy_dataset_to_entity_data_dir(test_yeast_genome, test_dataset_path)
 
         test_chroms_dataset  = Dataset.objects.create(
             label = 'jkl_chroms',
