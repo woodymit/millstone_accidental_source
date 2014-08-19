@@ -315,3 +315,28 @@ class TestExperimentSample(TestCase):
         es.delete()
 
         self.assertFalse(os.path.exists(es_data_dir))
+
+class TestChromosome(TestCase):
+
+    def test_multiple_chromosome_dataset_import(self):
+
+        user = User.objects.create_user(
+            TEST_USERNAME, password=TEST_PASSWORD, email=TEST_EMAIL)
+
+        project = Project.objects.create(
+             title=TEST_PROJECT_NAME, owner=user.get_profile())
+
+        test_yeast_genome = ReferenceGenome.objects.create(
+            project = project,
+            label = 'alemaker2000')
+
+        dataset_path = clean_filesystem_location('../test_data/yeast_chrom_jkl.fasta')
+
+        test_chroms_dataset  = Dataset.objects.create(
+            label = 'jkl_chroms',
+            type = Dataset.TYPE.REFERENCE_GENOME_FASTA,
+            filesystem_location = dataset_path)
+
+        test_yeast_genome.dataset_set.add(test_chroms_dataset)
+
+        assert(test_yeast_genome.num_chromosomes == 3)
