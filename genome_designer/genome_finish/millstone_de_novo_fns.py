@@ -6,6 +6,32 @@ import re
 from settings import TOOLS_DIR
 from settings import SAMTOOLS_BINARY
 from settings import BASH_PATH
+from genome_finish import __path__ as gf_path_list
+
+GENOME_FINISH_PATH = gf_path_list[0]
+
+def get_clipped_reads(bam_filename, output_filename):
+    cmd = ' | '.join([
+        '{samtools} view -h {bam_filename}',
+        '{extract_clipped_script} -i stdin',
+        '{samtools} view -Sb -']).format(
+            samtools=SAMTOOLS_BINARY,
+            bam_filename=bam_filename,
+            extract_clipped_script=os.path.join(
+                GENOME_FINISH_PATH,
+                'extractClippedReads'))
+
+   # try:
+    fh = open(output_filename, 'w')
+    subprocess.check_call(cmd, stdout=fh, shell=True, executable=BASH_PATH)
+    fh.close()
+
+    # sort the split reads, overwrite the old file
+    subprocess.check_call([SAMTOOLS_BINARY, 'sort', output_filename,
+            os.path.splitext(output_filename)[0]])
+
+    # except subprocess.CalledProcessError:
+    #     raise Exception("Exception caught in split reads generator, perhaps due to no clippedreads")
 
 def get_unmapped_reads(bam_filename, output_filename):
 

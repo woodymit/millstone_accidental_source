@@ -51,18 +51,40 @@ def truncate_ext(path, count=1):
 def bwa_align(reads, ref_fasta, data_dir):
     
 #   1. python fasta_to_fastq.py reads.fa
+    # reads_fq = []
+    # if len(reads) == 1:
+    #     if reads[0].endswith(".fq"):
+    #         reads_fq = reads
+    #     elif reads[0].endswith(".fa"):
+    #         fastq = truncate_ext(reads[0]) + ".fq"
+    #         reads_fq.append(fastq)
+    #         if not os.path.exists(fastq):
+    #             convert_fasta_to_fastq(reads[0], fastq)
+    #     else:
+    #         raise Exception("Reads must be in fastq or fasta format")
 
-    reads_fq = []
-    if reads[0].endswith(".fq") and reads[1].endswith(".fq"):
+    # elif reads[0].endswith(".fq") and reads[1].endswith(".fq"):
+    #     reads_fq = reads
+
+    # elif reads[0].endswith(".fa") and reads[0].endswith(".fa"):
+    #     for r in reads:
+    #         fastq = truncate_ext(r) + ".fq"
+    #         reads_fq.append(fastq)
+    #         if not os.path.exists(fastq):
+    #             convert_fasta_to_fastq(r, fastq)
+    # else:
+    #     raise Exception("Both reads must be in fastq or fasta format")
+
+    # Cleaner
+
+    if all([r.endswith(".fa") for r in reads]):
+        reads_fq = [os.path.join(data_dir, truncate_ext(r) + ".fq") for r in reads]
+        for i,r in enumerate(reads):
+            convert_fasta_to_fastq(r, reads_fq[i])
+    elif all([r.endswith(".fq") for r in reads]):
         reads_fq = reads
-    elif reads[0].endswith(".fa") and reads[0].endswith(".fa"):
-        for r in reads:
-            fastq = truncate_ext(r) + ".fq"
-            reads_fq.append(fastq)
-            if not os.path.exists(fastq):
-                convert_fasta_to_fastq(r, fastq)
     else:
-        raise Exception("Both reads must be in fastq or fasta format")
+        raise(Exception("All reads must have file extension .fq or .fa"))
 
 #   2. bwa index ref.fa #TODO: Check if already indexed
     cmd = "{bwa} index {ref_path}".format(
@@ -111,7 +133,19 @@ def bwa_align(reads, ref_fasta, data_dir):
 
     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
+#   7. Index it
+    index_bam(alignment_sorted_bam)
+
     return alignment_sorted_bam
+
+
+def index_bam(bam):
+    cmd = "{samtools} index {bam}".format(
+        samtools=settings.SAMTOOLS_BINARY,
+        bam=bam)
+    print "\n\n\nDEBUG: A BAM FILE WAS INDEXED\nBam path was " + str(bam) + "\n\n\n"
+
+    subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
 
 def make_sam(bam, sam_filename = None):
@@ -168,43 +202,80 @@ def rmdup(bam, output = None):
     print "Remove duplicates\n\tInitial bam size:\t " + str(size_init) + "\n\tFinal bam size:\t " + str(size_fin)
 
 
-def run_velvet(reads, hash_length=21, output_dir_name='velvet', cov_cutoff=20, ins_length=200, ins_length_sd=90, no_defaults = False):
+def run_velvet(reads, output_dir, opt_dict = None):
 
-    if not no_defaults:
-        # First run velveth to build hash of reads.
-        # TODO: What if we used shortPaired read type?
-        cmd = '{velveth} {output_dir} {hash_length} -bam {reads}'.format(
-                velveth=VELVETH_BINARY,
-                output_dir=output_dir_name,
-                hash_length=hash_length,
-                reads=reads)
+    default_opts = {
+        'velveth': {
+            'hash_length': 21
+        },
+        # 'velvetg': {
+        #     'cov_cutoff': 20,
+        #     'ins_length': 200,
+        #     'ins_length_sd': 90
+        # }
+    }
 
-        subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+    if not opt_dict:
+        opt_dict = default_opts
 
-        # Then run velvetg to build graph and find contigs.
-        cmd = '{velvetg} {output_dir} -cov_cutoff {cov_cutoff} -ins_length {ins_length} -ins_length_sd {ins_length_sd}'.format(
-                velvetg=VELVETG_BINARY,
-                output_dir=output_dir_name,
-                cov_cutoff=cov_cutoff,
-                ins_length=ins_length,
-                ins_length_sd=ins_length_sd)
+    if not 'hash_length' in opt_dict['velveth']:
+        raise Exception("If passing an option dictionary, an output_dir_name key \
+        must exist in the velveth sub-dictionary")
 
-        subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+    l = [
+        VELVETH_BINARY,
+        output_dir,
+        str(opt_dict['velveth']['hash_length'])] + ["-" + k + " " + str(opt_dict['velveth'][k])
+            for k in opt_dict['velveth']
+            if k not in ['hash_length']] + ["-bam"] +   [reads]
+    cmd = ' '.join(l)
+    subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
-    else:
-        # First run velveth to build hash of reads.
-        # TODO: What if we used shortPaired read type?
-        cmd = '{velveth} {output_dir} {hash_length} -bam {reads}'.format(
-                velveth=VELVETH_BINARY,
-                output_dir=output_dir_name,
-                hash_length=hash_length,
-                reads=reads)
+    cmd = ' '.join([
+    VELVETG_BINARY,
+    output_dir] +
+    ["-" + k + " " + str(opt_dict['velvetg'][k])
+        for k in opt_dict['velvetg']])
+    subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
-        subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
-        # Then run velvetg to build graph and find contigs.
-        cmd = '{velvetg} {output_dir}'.format(
-                velvetg=VELVETG_BINARY,
-                output_dir=output_dir_name)
+    # if not no_defaults:
+    #     # First run velveth to build hash of reads.
+    #     # TODO: What if we used shortPaired read type?
+    #     cmd = '{velveth} {output_dir} {hash_length} -bam {reads}'.format(
+    #             velveth=VELVETH_BINARY,
+    #             output_dir=output_dir_name,
+    #             hash_length=hash_length,
+    #             reads=reads)
 
-        subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+
+
+    #     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+
+    #     # Then run velvetg to build graph and find contigs.
+    #     cmd = '{velvetg} {output_dir} -cov_cutoff {cov_cutoff} -ins_length {ins_length} -ins_length_sd {ins_length_sd}'.format(
+    #             velvetg=VELVETG_BINARY,
+    #             output_dir=output_dir_name,
+    #             cov_cutoff=cov_cutoff,
+    #             ins_length=ins_length,
+    #             ins_length_sd=ins_length_sd)
+
+    #     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+
+    # else:
+    #     # First run velveth to build hash of reads.
+    #     # TODO: What if we used shortPaired read type?
+    #     cmd = '{velveth} {output_dir} {hash_length} -bam -shortPaired {reads}'.format(
+    #             velveth=VELVETH_BINARY,
+    #             output_dir=output_dir_name,
+    #             hash_length=hash_length,
+    #             reads=reads)
+
+    #     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+
+    #     # Then run velvetg to build graph and find contigs.
+    #     cmd = '{velvetg} {output_dir} -max_branch_length 19'.format(
+    #             velvetg=VELVETG_BINARY,
+    #             output_dir=output_dir_name)
+
+    #     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)

@@ -47,6 +47,7 @@ from main.models import VariantSet
 from main.models import S3File
 from genome_finish import assembly
 from utils.data_export_util import export_melted_variant_view
+from utils.import_util import copy_and_add_dataset_source
 from utils.import_util import create_samples_from_row_data
 from utils.import_util import create_sample_models_for_eventual_upload
 from utils.import_util import import_reference_genome_from_local_file
@@ -1062,6 +1063,17 @@ def generate_contigs(request):
 
     # Select only element in list
     contig_file = contig_files[0]
+
+    # Get reference genome
+    reference_genome = experiment_sample_to_alignment.alignment_group.reference_genome
+
+    # Delete contigs dataset if already exists
+    if reference_genome.dataset_set.filter(type = Dataset.TYPE.CONTIGS_FASTA).exists():
+        print "DEBUG: Old CONTIGS_FASTA dataset deleted"
+        reference_genome.dataset_set.get(type = Dataset.TYPE.CONTIGS_FASTA).delete()
+
+    # Add contigs to reference genome
+    copy_and_add_dataset_source(reference_genome, "contigs", Dataset.TYPE.CONTIGS_FASTA, contig_file)
 
     wrapper = FileWrapper(file(contig_file))
     response = StreamingHttpResponse(wrapper, content_type='text/plain')

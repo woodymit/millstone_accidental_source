@@ -119,6 +119,7 @@ class Dataset(UniqueUidModelMixin):
         LUMPY_INSERT_METRICS_MEAN_STDEV = 'Lumpy Insert Metrics Mean Stdev'
         FASTQC1_HTML = 'FASTQC Forward HTML Output'
         FASTQC2_HTML = 'FASTQC Reverse HTML Output'
+        CONTIGS_FASTA = 'Genome finish generated contigs'
 
     TYPE_CHOICES = make_choices_tuple(TYPE)
     type = models.CharField(max_length=40, choices=TYPE_CHOICES)
@@ -145,6 +146,7 @@ class Dataset(UniqueUidModelMixin):
         TYPE.VCF_FREEBAYES_SNPEFF : 'alignmentgroup_set',
         TYPE.FASTQC1_HTML: 'experimentsample_set',
         TYPE.FASTQC2_HTML: 'experimentsample_set',
+        TYPE.CONTIGS_FASTA: 'referencegenome_set'
     }
 
     # Human-readable identifier. Also used for JBrowse.

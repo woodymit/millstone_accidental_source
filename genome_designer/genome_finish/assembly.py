@@ -41,7 +41,9 @@ def generate_contigs(experimentSampleToAlignment):
 
     # ---------- Begin Genome Finishing ---------- #
 
+
     # Align reads
+    #if not experimentSampleToAlignment.dataset_set.filter(type=Dataset.TYPE.BWA_ALIGN).exists():
     alignment_sorted = de_novo_bam.bwa_align(read_fastqs, ref_fasta, data_dir)
 
     # Trim 'alignment.sorted.bam' off filename to get bam_prefix
@@ -49,22 +51,28 @@ def generate_contigs(experimentSampleToAlignment):
 
     # Get split and unmapped reads
     unmapped_reads = bam_prefix + ".alignment.unmapped.bam"
-    # alignment_sorted = bam_prefix + ".alignment.sorted.bam"
     de_novo_bam.millstone_de_novo_fns.get_unmapped_reads(bam_prefix + ".alignment.sorted.bam", unmapped_reads)
 
     split_reads = bam_prefix + ".alignment.split.bam"
     de_novo_bam.millstone_de_novo_fns.get_split_reads(bam_prefix + ".alignment.sorted.bam", split_reads)
 
+    clipped_reads = bam_prefix + ".alignment.clipped.bam"
+    de_novo_bam.millstone_de_novo_fns.get_clipped_reads(bam_prefix + ".alignment.sorted.bam", clipped_reads)
+
     # Concatenate split and unmapped reads
     unmapped_and_split = bam_prefix + ".alignment.unmapped_and_split.bam"
     de_novo_bam.concatenate_bams(unmapped_reads, split_reads, unmapped_and_split)
+
+    # Concatenate split + unmapped reads and clipped reads
+    unmapped_split_clipped = bam_prefix + ".alignment.unmapped_split_clipped.bam"
+    de_novo_bam.concatenate_bams(unmapped_and_split, clipped_reads, unmapped_split_clipped)
 
     #TODO: sort?
 
     print "Make split_unmapped sam"
     # Make split_unmapped sam (for add_paired_mates)
     unmapped_and_split_sam = bam_prefix + ".alignment.unmapped_and_split.sam"
-    de_novo_bam.make_sam(unmapped_and_split, unmapped_and_split_sam)
+    de_novo_bam.make_sam(unmapped_split_clipped, unmapped_and_split_sam)
 
     print "Add mate pairs"
     # Add mate pairs %%%%%%% samtools header error if try to view unmapped_and_split.sam, but can view bam
@@ -88,17 +96,27 @@ def generate_contigs(experimentSampleToAlignment):
     # contig_alignment_dir = os.path.join(data_dir, "contig_alignments")
     # os.mkdir(contig_alignment_dir)
 
-    kmer_list = [21] #range(11,33,2)
+    kmer_list = [31] #range(11,33,2)
     contig_files = []
 
     for kmer_length in kmer_list:
         print "assembling with kmer length " + str(kmer_length)
+
+        opt_dict = {
+            'velveth': {
+                'hash_length': kmer_length,
+                'shortPaired': ''
+            },
+            'velvetg': {
+                'cov_cutoff':3
+            }
+        }
+
         velvet_dir = os.path.join(data_dir, "velvet_k" + str(kmer_length))
         de_novo_bam.run_velvet(
                 unmapped_and_split_with_pairs_bam,
-                output_dir_name = velvet_dir,
-                hash_length = kmer_length,
-                no_defaults = True) #Change back to False when fastq's more realistic
+                velvet_dir,
+                opt_dict)
 
         contigs_fasta = os.path.join(velvet_dir,"contigs.fa")
         contig_files.append(contigs_fasta)
