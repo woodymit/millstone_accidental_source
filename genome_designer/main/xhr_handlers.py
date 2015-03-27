@@ -47,6 +47,7 @@ from main.models import VariantSet
 from main.models import S3File
 from genome_finish import assembly
 from utils.data_export_util import export_melted_variant_view
+from utils.import_util import add_dataset_to_entity
 from utils.import_util import copy_and_add_dataset_source
 from utils.import_util import create_samples_from_row_data
 from utils.import_util import create_sample_models_for_eventual_upload
@@ -57,6 +58,7 @@ from utils.import_util import import_variant_set_from_vcf
 from utils.optmage_util import ReplicationOriginParams
 from utils.optmage_util import print_mage_oligos
 from utils.reference_genome_maker_util import generate_new_reference_genome
+from scripts.combine_reference_genomes import combine_list_allformats
 from variants.common import determine_visible_field_names
 from variants.filter_key_map_constants import MAP_KEY__ALTERNATE
 from variants.filter_key_map_constants import MAP_KEY__COMMON_DATA
@@ -190,6 +192,37 @@ def ref_genomes_delete(request):
 
     # Validation successful, delete.
     ref_genomes_to_delete.delete()
+
+    # Return success response.
+    return HttpResponse(json.dumps({}), content_type='application/json')
+
+
+@login_required
+@require_POST
+def ref_genomes_concatenate(request):
+    """Concatenates ReferenceGenomes.
+    """
+    request_data = json.loads(request.body)
+    ref_genome_uid_list = request_data.get('refGenomeUidList', [])
+    if len(ref_genome_uid_list) == 0:
+        raise Http404
+    new_genome_label = request_data.get('newGenomeLabel', [])
+    if len(new_genome_label) == 0:
+        raise Http404
+
+    # First make sure all the samples belong to this user.
+    ref_genomes_to_concatenate = ReferenceGenome.objects.filter(
+            project__owner=request.user.get_profile(),
+            uid__in=ref_genome_uid_list)
+    if not len(ref_genomes_to_concatenate) == len(ref_genome_uid_list):
+        raise Http404
+
+    # Validation successful, concatenate.
+    project = ref_genomes_to_concatenate[0].project
+    return_data = combine_list_allformats(ref_genomes_to_concatenate, new_genome_label, project)
+
+    if 'error_msg' in return_data:
+        raise Exception('combine genomes failed with error message:',return_data['error_msg'])
 
     # Return success response.
     return HttpResponse(json.dumps({}), content_type='application/json')
@@ -1053,6 +1086,9 @@ def generate_contigs(request):
     unmapped and split reads of the passed ExperimentSampleToAlignment
     """
 
+    # Retrieve contig label
+    contig_label = request.GET.get('contig_label')
+
     # Retrieve ExperimentSampleToAlignment
     experiment_sample_uid = request.GET.get('experiment_sample_uid')
     experiment_sample_to_alignment = get_object_or_404(ExperimentSampleToAlignment,
@@ -1074,6 +1110,20 @@ def generate_contigs(request):
 
     # Add contigs to reference genome
     copy_and_add_dataset_source(reference_genome, "contigs", Dataset.TYPE.CONTIGS_FASTA, contig_file)
+
+    ### Adding a reference genome for the contigs
+    # Create a new ReferenceGenome.
+    print 'reference_genome:',reference_genome
+    print 'reference_genome.label:',reference_genome.label
+    contig_ref_genome_label = ' :: '.join([str(reference_genome.label), contig_label])
+    contig_ref_genome = ReferenceGenome.objects.create(
+            project=reference_genome.project,
+            label=contig_ref_genome_label)
+
+    # Create a dataset which will point to the file
+    ref_genome_dataset_type = Dataset.TYPE.REFERENCE_GENOME_FASTA
+    contig_ref_genome_dataset = add_dataset_to_entity(contig_ref_genome,
+            ref_genome_dataset_type, ref_genome_dataset_type, contig_file)
 
     wrapper = FileWrapper(file(contig_file))
     response = StreamingHttpResponse(wrapper, content_type='text/plain')

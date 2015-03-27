@@ -147,7 +147,7 @@ def qnames_difference(qnames1, qnames2):
 def filter_bam_by_qname_dict(input_file_path, qname_dict, output_bam_path):
     filter_bam_file_by_row(input_file_path, partial(qname_filter_function, qname_dict=qname_dict), output_bam_path)
 
-def import_bam(reference_genome, alignment_group_name = "contig_alignment", sample_alignment_name = "contig_alignment_sample", dataset_label = "contig_aligned_bam"):
+def import_bam(bam_path, reference_genome, alignment_group_name = "contig_alignment", sample_alignment_name = "contig_alignment_sample", dataset_label = "contig_aligned_bam"):
     """
     Args:
         reference_genome: The ReferenceGenome that the contigs belong to
@@ -175,11 +175,11 @@ def import_bam(reference_genome, alignment_group_name = "contig_alignment", samp
         copy_and_add_dataset_source(experiment_sample_to_alignment,
             dataset_label,
             Dataset.TYPE.BWA_ALIGN,
-            output_bam)
+            bam_path)
 
         # index bam file for jbrowse
-        bam_path = experiment_sample_to_alignment.dataset_set.get(type=Dataset.TYPE.BWA_ALIGN).get_absolute_location()
-        index_bam(bam_path)
+        new_bam_path = experiment_sample_to_alignment.dataset_set.get(type=Dataset.TYPE.BWA_ALIGN).get_absolute_location()
+        index_bam(new_bam_path)
 
     else:
         raise Exception("There already is an associated BWA_ALIGN dataset with the actual genome")
@@ -215,6 +215,22 @@ def test_script():
     all_reads_bam = 'temp_data/projects/a04e843e/alignment_groups/c4bd8c0e/sample_alignments/8cd2c703/bwa_align.sorted.grouped.withmd.bam'
     picked_reads_bam = 'temp_data/projects/a04e843e/alignment_groups/5029f514/sample_alignments/759f3c96/bwa_align.sorted.grouped.withmd.bam'
 
+    transformed_genome = ReferenceGenome.objects.get(label='insertion_1_transformed')
+    reference_genome = ReferenceGenome.objects.get(label='insertion_1_ref')
+
+    all_reads_esta = ExperimentSampleToAlignment.objects.get(
+        alignment_group__reference_genome=transformed_genome,
+        experiment_sample__label='insertion_0bba438b')
+    picked_reads_esta = ExperimentSampleToAlignment.objects.get(
+        alignment_group__reference_genome=reference_genome,
+        experiment_sample__label='02_26_pulled_reads_1')
+
+    all_reads_bam = all_reads_esta.dataset_set.get(type=Dataset.TYPE.BWA_ALIGN)
+    picked_reads_bam = picked_reads_esta.dataset_set.get(type=Dataset.TYPE.BWA_ALIGN)
+
+    # all_reads_esta = ExperimentSampleToAlignment.objects.get(experiment_sample__label='all_reads_to_trans')
+    # picked_reads_esta = ExperimentSampleToAlignment.objects.get(experiment_sample__label='02_26_pulled_reads_1')
+
     qnames_all = get_qname_dict(all_reads_bam)
     qnames_picked = get_qnames_dict(picked_reads_bam)
 
@@ -223,8 +239,6 @@ def test_script():
     output_root = os.path.splitext(all_reads_bam)[0]
     ouput_bam_path = output_root + '.diff.temp.bam'
 
-    filter_bam_by_qnames_dict(all_reads_bam, qnames_diff, output_bam_path)
+    filter_bam_by_qnames_dict(all_reads_bam, qnames_diff, filtered_bam_path)
 
-
-
-   # import_bam(
+    import_bam(filtered_bam_path, transformed_genome, '02_27_not_pulled_reads_alignment', '02_27_not_pulled_reads_sample', '02_27_not_pulled_reads')

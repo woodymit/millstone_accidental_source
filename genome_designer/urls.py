@@ -149,6 +149,8 @@ urlpatterns = patterns('',
             'main.xhr_handlers.create_ref_genome_from_ncbi'),
     url(r'^_/ref_genomes/delete$',
             'main.xhr_handlers.ref_genomes_delete'),
+    url(r'^_/ref_genomes/concatenate$',
+            'main.xhr_handlers.ref_genomes_concatenate'),
 
 
     ###########################################################################
