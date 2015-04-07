@@ -305,11 +305,13 @@ gd.RefGenomeControlsComponent = gd.DataTableControlsComponent.extend({
     this.enterLoadingState();
 
     var postData = {
-        newGenomeLabel: newGenomeLabel,
-        refGenomeUidList: refGenomeUidList,
+        "newGenomeLabel": newGenomeLabel,
+        "refGenomeUidList": refGenomeUidList,
     };
 
-    $.post('/_/ref_genomes/concatenate', JSON.stringify(postData),
+    alert(postData)
+
+    $.post('/_/ref_genomes/concatenate', {data:JSON.stringify(postData)},
         _.bind(this.handleConcatenateResponse, this));
 
 },

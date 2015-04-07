@@ -46,8 +46,6 @@ def align_contigs_to_actual_genome(reference_genome, actual_genome, sample_align
         alignment_group=alignment_group,
         experiment_sample=experiment_sample)[0]
 
-    print "\n\tDEBUG: An experiment_sample_to_alignment was made\n"
-
     # Make data_dir directory to house genome_finishing files
     project_dir = reference_genome.project.get_model_data_dir()
     data_dir = os.path.join(project_dir, "genome_finishing", experiment_sample_to_alignment.uid)
@@ -58,8 +56,6 @@ def align_contigs_to_actual_genome(reference_genome, actual_genome, sample_align
         os.mkdir(data_dir)
     elif not os.path.exists(data_dir):
         os.mkdir(data_dir)
-
-    print "data_dir: " + str(data_dir)
 
     # Get contigs
     contigs = reference_genome.dataset_set.get(type = Dataset.TYPE.CONTIGS_FASTA).get_absolute_location()
@@ -84,3 +80,6 @@ def align_contigs_to_actual_genome(reference_genome, actual_genome, sample_align
 
     add_bam_file_track(actual_genome, experiment_sample_to_alignment, Dataset.TYPE.BWA_ALIGN)
     print"\n\nDEBUG: bam file track added\n\n"
+
+def make_fastq_from_bam():
+    #

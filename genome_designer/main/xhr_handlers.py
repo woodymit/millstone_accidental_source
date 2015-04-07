@@ -202,13 +202,14 @@ def ref_genomes_delete(request):
 def ref_genomes_concatenate(request):
     """Concatenates ReferenceGenomes.
     """
-    request_data = json.loads(request.body)
-    ref_genome_uid_list = request_data.get('refGenomeUidList', [])
+    request_data=json.loads(request.POST['data'])
+    ref_genome_uid_list = request_data['refGenomeUidList']
     if len(ref_genome_uid_list) == 0:
         raise Http404
-    new_genome_label = request_data.get('newGenomeLabel', [])
+    new_genome_label = request_data['newGenomeLabel']
     if len(new_genome_label) == 0:
         raise Http404
+
 
     # First make sure all the samples belong to this user.
     ref_genomes_to_concatenate = ReferenceGenome.objects.filter(
@@ -220,9 +221,6 @@ def ref_genomes_concatenate(request):
     # Validation successful, concatenate.
     project = ref_genomes_to_concatenate[0].project
     return_data = combine_list_allformats(ref_genomes_to_concatenate, new_genome_label, project)
-
-    if 'error_msg' in return_data:
-        raise Exception('combine genomes failed with error message:',return_data['error_msg'])
 
     # Return success response.
     return HttpResponse(json.dumps({}), content_type='application/json')
@@ -1095,36 +1093,34 @@ def generate_contigs(request):
             alignment_group__reference_genome__project__owner=request.user.get_profile(),
             uid=experiment_sample_uid)
 
-    contig_files = assembly.generate_contigs(experiment_sample_to_alignment)
-
-    # Select only element in list
-    contig_file = contig_files[0]
 
     # Get reference genome
     reference_genome = experiment_sample_to_alignment.alignment_group.reference_genome
 
-    # Delete contigs dataset if already exists
-    if reference_genome.dataset_set.filter(type = Dataset.TYPE.CONTIGS_FASTA).exists():
-        print "DEBUG: Old CONTIGS_FASTA dataset deleted"
-        reference_genome.dataset_set.get(type = Dataset.TYPE.CONTIGS_FASTA).delete()
-
-    # Add contigs to reference genome
-    copy_and_add_dataset_source(reference_genome, "contigs", Dataset.TYPE.CONTIGS_FASTA, contig_file)
-
-    ### Adding a reference genome for the contigs
-    # Create a new ReferenceGenome.
-    print 'reference_genome:',reference_genome
-    print 'reference_genome.label:',reference_genome.label
-    contig_ref_genome_label = ' :: '.join([str(reference_genome.label), contig_label])
+    # Create a reference genome for the contigs
+    contig_ref_genome_label = ' :: '.join([reference_genome.label, contig_label])
     contig_ref_genome = ReferenceGenome.objects.create(
             project=reference_genome.project,
             label=contig_ref_genome_label)
 
-    # Create a dataset which will point to the file
-    ref_genome_dataset_type = Dataset.TYPE.REFERENCE_GENOME_FASTA
-    contig_ref_genome_dataset = add_dataset_to_entity(contig_ref_genome,
-            ref_genome_dataset_type, ref_genome_dataset_type, contig_file)
+    # Generate a list of fasta file paths to the contigs
+    contig_files = assembly.generate_contigs(experiment_sample_to_alignment, contig_label)
 
+    # Select only element in list
+    contig_file = contig_files[0]
+
+    # Create a dataset which will point to the file
+    contig_ref_genome_dataset = add_dataset_to_entity(contig_ref_genome,
+            'raw_contigs', Dataset.TYPE.REFERENCE_GENOME_FASTA, contig_file)
+
+
+    # # Delete contigs dataset if already exists
+    # if reference_genome.dataset_set.filter(type = Dataset.TYPE.CONTIGS_FASTA).exists():
+    #     print "DEBUG: Old CONTIGS_FASTA dataset deleted"
+    #     reference_genome.dataset_set.get(type = Dataset.TYPE.CONTIGS_FASTA).delete()
+
+    # # Add contigs to reference genome
+    # copy_and_add_dataset_source(reference_genome, "contigs", Dataset.TYPE.CONTIGS_FASTA, contig_file)
     wrapper = FileWrapper(file(contig_file))
     response = StreamingHttpResponse(wrapper, content_type='text/plain')
     response['Content-Disposition'] = 'attachment; filename="contigs.fa"'

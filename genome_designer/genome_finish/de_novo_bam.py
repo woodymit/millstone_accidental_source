@@ -143,7 +143,6 @@ def index_bam(bam):
     cmd = "{samtools} index {bam}".format(
         samtools=settings.SAMTOOLS_BINARY,
         bam=bam)
-    print "\n\n\nDEBUG: A BAM FILE WAS INDEXED\nBam path was " + str(bam) + "\n\n\n"
 
     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 

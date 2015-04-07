@@ -15,7 +15,7 @@ def truncate_ext(path, count=1):
     else:
         return truncate_ext(path[:path.rindex(".")], count)
 
-def generate_contigs(experimentSampleToAlignment):
+def generate_contigs(experimentSampleToAlignment, contig_label):
 
     # Get fasta read files
     experimentSample = experimentSampleToAlignment.experiment_sample

@@ -1,6 +1,7 @@
 import subprocess
 import os
 import shutil
+import pickle
 import re
 
 from settings import TOOLS_DIR
@@ -32,6 +33,24 @@ def get_clipped_reads(bam_filename, output_filename):
 
     # except subprocess.CalledProcessError:
     #     raise Exception("Exception caught in split reads generator, perhaps due to no clippedreads")
+
+def get_match_counts(bam_filename):
+    cmd = ' | '.join([
+        '{samtools} view -h {bam_filename}',
+        '{assess_alignment_script} -i stdin']).format(
+            samtools=SAMTOOLS_BINARY,
+            bam_filename=bam_filename,
+            assess_alignment_script=os.path.join(
+                GENOME_FINISH_PATH,
+                'assess_alignment'))
+    try:
+        output=subprocess.check_output(cmd, shell=True, executable=BASH_PATH)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError("command '{}' return with error (code {}): {}".format(e.cmd, e.returncode, e.output))
+        # print 'subprocess returncode:', (e.returncode)
+        # print 'subprocess output:', output
+    return pickle.loads(output)
+
 
 def get_unmapped_reads(bam_filename, output_filename):
 

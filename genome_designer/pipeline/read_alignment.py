@@ -97,7 +97,7 @@ def align_with_bwa_mem(alignment_group, sample_alignment):
         ensure_bwa_index(ref_genome_fasta)
 
         # Grab the fastq sources, and determine whether we are doing paired ends.
-
+        input_reads_2_fq = None
         for dataset in experiment_sample.dataset_set.all():
             if dataset.type == Dataset.TYPE.FASTQ1:
                 input_reads_1_fq = dataset.wrap_if_compressed()
