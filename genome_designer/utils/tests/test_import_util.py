@@ -19,6 +19,7 @@ from main.models import Variant
 from main.models import VariantSet
 from main.model_utils import get_dataset_with_type
 from main.testing_util import create_common_entities
+from utils.import_util import _get_fastqc_path
 from utils.import_util import DataImportError
 from utils.import_util import copy_and_add_dataset_source
 from utils.import_util import create_sample_models_for_eventual_upload
@@ -45,6 +46,12 @@ TEST_FASTQ_GZ_1 = os.path.join(TEST_DATA_ROOT, 'fake_genome_and_reads',
         '6057f443', 'test_genome_8.snps.simLibrary.1.fq.gz')
 TEST_FASTQ_GZ_2 = os.path.join(TEST_DATA_ROOT, 'fake_genome_and_reads',
         '6057f443', 'test_genome_8.snps.simLibrary.2.fq.gz')
+
+
+TEST_FASTQ_GZ_B_1 = os.path.join(TEST_DATA_ROOT, 'fake_genome_and_reads',
+        '70e343f5', 'test_genome_5.snps.simLibrary.1.fastq.gz')
+TEST_FASTQ_GZ_B_2 = os.path.join(TEST_DATA_ROOT, 'fake_genome_and_reads',
+        '70e343f5', 'test_genome_5.snps.simLibrary.2.fastq.gz')
 
 
 class TestImportReferenceGenome(TestCase):
@@ -379,22 +386,15 @@ class TestImportVariantSetFromVCFFile(TestCase):
             label='Chromosome',
             num_bases=9001)
 
-    def test_import_variant_set(self):
-        """Tests importing variant sets from a pared-down vcf file
-        containing only chromosome, position info, etc.
+    def _assert_variants(self, vcf_filepath):
+        """Common assert code used by multiple tests.
         """
-
-        VARIANT_SET_VCF_FILEPATH = os.path.join(settings.PWD,
-                'test_data', 'fake_genome_and_reads',
-                'test_genome_variant_set.vcf')
-
         NUM_VARIANTS_IN_SET = 20
 
         VARIANT_SET_NAME = 'Test Set'
 
         import_variant_set_from_vcf(
-                self.ref_genome, VARIANT_SET_NAME,
-                VARIANT_SET_VCF_FILEPATH)
+                self.ref_genome, VARIANT_SET_NAME, vcf_filepath)
 
         new_variant_set = VariantSet.objects.get(
                 reference_genome=self.ref_genome,
@@ -410,7 +410,25 @@ class TestImportVariantSetFromVCFFile(TestCase):
 
         v_553 = Variant.objects.get(reference_genome=self.ref_genome,
                 position=553)
-        self.assertEqual(set(['C','G']), set(v_553.get_alternates()))
+        self.assertEqual(set(['C', 'G']), set(v_553.get_alternates()))
+
+    def test_import_variant_set(self):
+        """Tests importing variant sets from a pared-down vcf file
+        containing only chromosome, position info, etc.
+        """
+        VARIANT_SET_VCF_FILEPATH = os.path.join(settings.PWD,
+                'test_data', 'fake_genome_and_reads',
+                'test_genome_variant_set.vcf')
+        self._assert_variants(VARIANT_SET_VCF_FILEPATH)
+
+    def test_import_variant_set__nonstandard_linebreaks(self):
+        """Tests importing variant sets from file with nonstandard linebreaks
+        as might happen with a tab-separated file saved in Excel on Mac OS X.
+        """
+        VARIANT_SET_VCF_FILEPATH = os.path.join(settings.PWD,
+                'test_data', 'fake_genome_and_reads',
+                'test_genome_variant_set__mac_linebreaks.vcf')
+        self._assert_variants(VARIANT_SET_VCF_FILEPATH)
 
 
 class TestFastQC(TestCase):
@@ -453,3 +471,31 @@ class TestFastQC(TestCase):
 
     def test_fastqc_gzipped(self):
         self._fastqc_test_runner(TEST_FASTQ_GZ_1, TEST_FASTQ_GZ_2)
+
+    def test_get_fastqc_filename(self):
+        FASTQ_FILENAME = 'R2_001.fq.gz'
+
+        fastq_dataset = Dataset.objects.create(
+                label='irrelevant',
+                type='also irrelevant',
+                filesystem_location=FASTQ_FILENAME)
+
+        actual_fastqc_filename = os.path.split(
+                _get_fastqc_path(fastq_dataset))[1]
+
+        EXPECTED_FASTQC_FILENAME = 'R2_001.fq_fastqc.html'
+        self.assertEqual(EXPECTED_FASTQC_FILENAME, actual_fastqc_filename)
+
+    def test_get_fastqc_filename__extension_is_fastqc(self):
+        FASTQ_FILENAME = 'R2_001.fastq.gz'
+
+        fastq_dataset = Dataset.objects.create(
+                label='irrelevant',
+                type='also irrelevant',
+                filesystem_location=FASTQ_FILENAME)
+
+        actual_fastqc_filename = os.path.split(
+                _get_fastqc_path(fastq_dataset))[1]
+
+        EXPECTED_FASTQC_FILENAME = 'R2_001_fastqc.html'
+        self.assertEqual(EXPECTED_FASTQC_FILENAME, actual_fastqc_filename)

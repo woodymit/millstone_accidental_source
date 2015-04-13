@@ -230,6 +230,17 @@ def generate_fasta_from_genbank(ref_genome):
     copy_and_add_dataset_source(ref_genome, dataset_type,
             dataset_type, fasta_filename)
 
+def ensure_fasta_index(ref_genome_fasta):
+    """
+    Check if a fasta index is present w/ extension .fai. If not,
+    use samtools to generate one.
+    """
+    if not os.path.exists(ref_genome_fasta + '.fai'):
+        subprocess.check_call([
+            settings.SAMTOOLS_BINARY,
+            'faidx',
+            ref_genome_fasta])
+
 
 def generate_gff_from_genbank(ref_genome):
     """If this reference genome has a genbank but not a GFF, generate
@@ -534,11 +545,7 @@ def run_fastqc_on_sample_fastq(experiment_sample, fastq_dataset, rev=False):
 
     # There's no option to pass the output filename to FastQC so we just
     # create the name that matches what FastQC outputs.
-    if fastq_dataset.is_compressed():
-        unzipped_fastq_filename = os.path.splitext(fastq_filename)[0]
-    else:
-        unzipped_fastq_filename = fastq_filename
-    fastqc_filename = unzipped_fastq_filename + '_fastqc.html'
+    fastqc_filename = _get_fastqc_path(fastq_dataset)
 
     if rev:
         dataset_type = Dataset.TYPE.FASTQC2_HTML
@@ -571,6 +578,25 @@ def run_fastqc_on_sample_fastq(experiment_sample, fastq_dataset, rev=False):
     fastqc_dataset.save()
 
     return fastqc_dataset
+
+
+def _get_fastqc_path(fastq_dataset):
+    """Returns fastqc filename given Dataset pointing to fastq.
+    """
+    fastq_filename = fastq_dataset.get_absolute_location()
+
+    if fastq_dataset.is_compressed():
+        unzipped_fastq_filename = os.path.splitext(fastq_filename)[0]
+    else:
+        unzipped_fastq_filename = fastq_filename
+
+    # NOTE: FASTQC apparently has slightly different behavior when the file
+    # extension is.fastqc where it chops off the .fastqc part so we have to do
+    # that here manually too.
+    if os.path.splitext(unzipped_fastq_filename)[1] == '.fastq':
+        unzipped_fastq_filename = os.path.splitext(unzipped_fastq_filename)[0]
+
+    return unzipped_fastq_filename + '_fastqc.html'
 
 
 def create_sample_models_for_eventual_upload(project, targets_file):
@@ -824,9 +850,11 @@ def _read_variant_set_file_as_csv(variant_set_file, reference_genome,
         * variant_set_file: Path to vcf file.
         * reference_genome: ReferenceGenome object.
     """
-
-    with open(variant_set_file) as fh:
-         # Use this wrapper to skip the header lines
+    # NOTE: Must open with 'rU', universal mode, to handle non-standard
+    # linebreaks that might be introduced in different environments. For
+    # example, Excel on Mac OS X saves funky linebreaks.
+    with open(variant_set_file, 'rU') as fh:
+        # Use this wrapper to skip the header lines
         # Double ##s are part of the header, but single #s are column
         # headings and must be stripped and kept.
         def remove_vcf_header(iterable):
@@ -835,7 +863,7 @@ def _read_variant_set_file_as_csv(variant_set_file, reference_genome,
                     if line.startswith('#'):
                         line = line.lstrip('#')
                     yield line
-        vcf_noheader = remove_vcf_header(open(variant_set_file))
+        vcf_noheader = remove_vcf_header(fh)
 
         reader = csv.DictReader(vcf_noheader, delimiter='\t')
 
@@ -985,6 +1013,10 @@ def prepare_ref_genome_related_datasets(ref_genome, dataset):
     assert dataset.status != Dataset.STATUS.NOT_STARTED
 
     if dataset.type == Dataset.TYPE.REFERENCE_GENOME_FASTA:
+
+        # make sure the fasta index is generated
+
+
         # Run jbrowse ref genome processing
         prepare_jbrowse_ref_sequence(ref_genome)
 

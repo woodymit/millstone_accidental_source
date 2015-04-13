@@ -117,13 +117,31 @@ def adapt_non_recursive(obj_list, field_dict_list, reference_genome, melted):
         # Append catch all INFO column field
         # TODO use variables instead of magic strings
         va_data = melted_variant_obj['VA_DATA']
+
+        # MAJOR HACK ALERT: We need to rethink the whole thing.
         if isinstance(va_data, list):
-            va_data = va_data[0]  # melted; get first va_data of list
+            # Default.
+            representative_va = va_data[0]
+
+            # Try to do better. First one might not have data.
+            for va in va_data:
+                if not va:
+                    continue
+                if va.get('INFO_EFF_AA', '') or va.get('INFO_SVTYPE', ''):
+                    representative_va = va
+                    break
+
+            # Use this as va_data from here on.
+            va_data = representative_va
+
         if va_data:
             if 'INFO_SVTYPE' in va_data:
                 # is SV: make info of the form "SV [type] [length]"
-                visible_field_pairs.append(('INFO', 'SV %s %d' %
-                    (va_data['INFO_SVTYPE'], va_data.get('INFO_SVLEN', ''))))
+                key = 'INFO'
+                value = 'SV {svtype} {svlen}'.format(
+                        svtype=va_data['INFO_SVTYPE'],
+                        svlen=va_data.get('INFO_SVLEN', ''))
+                visible_field_pairs.append((key, value))
             else:
                 # is SNP: make info equal to the AA field
                 visible_field_pairs.append(('INFO', va_data.get('INFO_EFF_AA', '')))
