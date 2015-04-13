@@ -146,6 +146,17 @@ def index_bam(bam):
 
     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
+def sort_bam(input_bam, output_bam=None):
+    if output_bam == None:
+        output_bam = input_bam
+
+    cmd = "{samtools} sort {alignment_bam} {alignment_sorted}".format(
+        samtools=settings.SAMTOOLS_BINARY,
+        alignment_bam=input_bam,
+        alignment_sorted=output_bam)
+
+    subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
+
 
 def make_sam(bam, sam_filename = None):
     if sam_filename == None:
@@ -171,12 +182,11 @@ def make_bam(sam, bam_filename = None):
     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
 
 
-def concatenate_bams(bam1, bam2, output):
+def concatenate_bams(bam_list, output):
     
-    cmd = "{samtools} cat -o {output} {bam1} {bam2}".format(
+    cmd = "{samtools} cat -o {output} {bam_files}".format(
         samtools=settings.SAMTOOLS_BINARY,
-        bam1=bam1,
-        bam2=bam2,
+        bam_files=" ".join(bam_list),
         output=output)
 
     subprocess.call(cmd, shell=True, executable=settings.BASH_PATH)
@@ -185,7 +195,6 @@ def concatenate_bams(bam1, bam2, output):
 def rmdup(bam, output = None):
     if output == None:
         output = bam
-    # TODO: Find how many lines removed
     
     size_init = os.stat(bam).st_size
 

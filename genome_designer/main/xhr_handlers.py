@@ -1104,7 +1104,7 @@ def generate_contigs(request):
             label=contig_ref_genome_label)
 
     # Generate a list of fasta file paths to the contigs
-    contig_files = assembly.generate_contigs(experiment_sample_to_alignment, contig_label)
+    contig_files = assembly.generate_contigs(experiment_sample_to_alignment, contig_ref_genome)
 
     # Select only element in list
     contig_file = contig_files[0]

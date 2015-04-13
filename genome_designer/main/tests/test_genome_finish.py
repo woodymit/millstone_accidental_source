@@ -14,8 +14,9 @@ from django.http.request import HttpRequest
 from django.test import TestCase
 from django.test import Client
 
-from genome_finish.assembly import generate_contigs
 from genome_finish.de_novo_bam import bwa_align
+import genome_finish.assembly as assembly
+import genome_finish.de_novo_bam as de_novo_bam
 from main.models import AlignmentGroup
 from main.models import Dataset
 from main.models import ExperimentSample
@@ -147,6 +148,57 @@ class TestGenomeConcatenation(TestCase):
         contig_ref = ReferenceGenome.objects.get(label=contig_ref_label)
         assert contig_ref.num_bases > 0
 
+    def test_generate_contigs_with_existing_alignment(self):
+        """Tests generate_contigs xhr request handling
+        """
+        # Make ReferenceGenome
+        ins_1kb_ref=import_reference_genome_from_local_file(self.project, 'ins_1kb', INS_1KB_REF_GENOME_PATH,
+        'fasta', move=False)
+
+        # Make ExperimentSample
+        ins_1kb_reads=ExperimentSample.objects.create(
+            project=self.project,
+            label='ins_1kb_reads')
+        add_dataset_to_entity(ins_1kb_reads, 'reads_fq_1', Dataset.TYPE.FASTQ1,
+            filesystem_location=INS_1KB_FQ_1_PATH)
+        add_dataset_to_entity(ins_1kb_reads, 'reads_fq_2', Dataset.TYPE.FASTQ2,
+            filesystem_location=INS_1KB_FQ_2_PATH)
+
+        # Run alignment of reads to reference
+        alignment_group_label = 'fq_reads_pipeline_alignment'
+        ref_genome = ins_1kb_ref
+        sample_list = [ins_1kb_reads]
+        alignment_group, _ = run_pipeline(alignment_group_label, ref_genome, sample_list,
+            perform_variant_calling=False, alignment_options={})
+
+        # Get resulting ExperimentSampleToAlignment
+        reads_align = ExperimentSampleToAlignment.objects.get(
+            alignment_group=alignment_group,
+            experiment_sample=ins_1kb_reads)
+
+        contig_label='contigs_0'
+        request_data = {
+            'contig_label': contig_label,
+            'experiment_sample_uid': reads_align.uid
+        }
+
+        request = HttpRequest()
+        request.GET = request_data
+        request.method = 'GET'
+        request.user = self.user
+
+        authenticate(username=TEST_USERNAME, password=TEST_PASSWORD)
+        self.assertTrue(request.user.is_authenticated())
+
+        response = xhr_handlers.generate_contigs(request)
+
+        # Assert contigs were generated
+        contig_ref_label = ' :: '.join([ins_1kb_ref.label, contig_label])
+        assert len(ReferenceGenome.objects.filter(label=contig_ref_label))==1
+
+        contig_ref = ReferenceGenome.objects.get(label=contig_ref_label)
+        assert contig_ref.num_bases > 0
+
 
     def test_1kb_insertion_detection(self):
         # Make ReferenceGenome
@@ -172,13 +224,27 @@ class TestGenomeConcatenation(TestCase):
         reads_align = ExperimentSampleToAlignment.objects.get(
             alignment_group=alignment_group,
             experiment_sample=ins_1kb_reads)
+
+
+        # #DEBUG:
+        # alignment_bam = get_dataset_with_type(reads_align, Dataset.TYPE.BWA_ALIGN).get_absolute_location()
+        # alignment_sam = alignment_bam[:-3] + 'sam'
+        # de_novo_bam.make_sam(alignment_bam)
+        # with open(alignment_sam,'r') as fh:
+        #     for line in fh:
+        #         print line
+
  
-        contig_files = generate_contigs(reads_align, 'contigs_0')
+        # House the contigs in a ReferenceGenome
+        contigs_ref_genome = ReferenceGenome.objects.create(project=self.project,
+            label='ins_contigs')
+
+        contig_files = assembly.generate_contigs(reads_align, contigs_ref_genome)
         contigs_0 = contig_files[0]
 
-        # House the contigs in a Reference Genome
-        contigs_ref_genome = import_reference_genome_from_local_file(self.project, 'ins_contigs', contigs_0,
-        'fasta', move=False)
+        # Add the generated contig fastas to the contig ReferenceGenome
+        add_dataset_to_entity(contigs_ref_genome, 'ins_contigs_fasta', Dataset.TYPE.REFERENCE_GENOME_FASTA,
+            filesystem_location=contigs_0)
 
         # Create Experiment Sample for the inserted sequence
         insertion_sequence_sample = ExperimentSample.objects.create(project=self.project,
@@ -218,7 +284,7 @@ class TestGenomeConcatenation(TestCase):
         # Ensure thorough coverage of the insertion
         INSERTION_COVERAGE_CUTOFF = 0.95
         max_cov_fraction = float(max_matches)/INSERTION_LENGTH
-        print 'Contigs covered %.3f of the %d base inserted sequence' % (max_cov_fraction, INSERTION_LENGTH)
+        print 'Contigs covered %.3f of the %d base inserted sequence\n' % (max_cov_fraction, INSERTION_LENGTH)
         assert max_cov_fraction >= INSERTION_COVERAGE_CUTOFF, (
                 'The maximum fraction of the insertion captured by any contig was: %.3f, \
                 less than the passing cutoff: %.3f ' % (max_cov_fraction, INSERTION_COVERAGE_CUTOFF))

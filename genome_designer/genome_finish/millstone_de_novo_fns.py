@@ -31,8 +31,6 @@ def get_clipped_reads(bam_filename, output_filename):
     subprocess.check_call([SAMTOOLS_BINARY, 'sort', output_filename,
             os.path.splitext(output_filename)[0]])
 
-    # except subprocess.CalledProcessError:
-    #     raise Exception("Exception caught in split reads generator, perhaps due to no clippedreads")
 
 def get_match_counts(bam_filename):
     cmd = ' | '.join([
@@ -83,12 +81,12 @@ def get_split_reads(bam_filename, output_filename):
                             TOOLS_DIR, 'lumpy','extractSplitReads_BwaMem'))
 
     try:
-		fh = open(output_filename, 'w')
-		subprocess.check_call(filter_split_reads, stdout=fh, shell=True, executable=BASH_PATH)
-		fh.close()
+        fh = open(output_filename, 'w')
+        subprocess.check_call(filter_split_reads, stdout=fh, shell=True, executable=BASH_PATH)
+        fh.close()
 
         # sort the split reads, overwrite the old file
-		subprocess.check_call([SAMTOOLS_BINARY, 'sort', output_filename,
+        subprocess.check_call([SAMTOOLS_BINARY, 'sort', output_filename,
                 os.path.splitext(output_filename)[0]])
 
     except subprocess.CalledProcessError:
