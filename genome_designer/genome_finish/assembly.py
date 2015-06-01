@@ -9,6 +9,9 @@ from main.models import Project
 from main.models import ReferenceGenome
 from main.model_utils import get_dataset_with_type
 
+VELVET_COVERAGE_CUTOFF = 3
+VELVET_KMER_LIST = [21]
+
 def truncate_ext(path, count=1):
     count = count -1
     if count == 0:
@@ -36,10 +39,9 @@ def generate_contigs(experimentSampleToAlignment, contig_ref_genome):
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
 
-
     # ---------- Begin Genome Finishing ---------- #
 
-    # Retrieve bwa mem .bam file if exists otherwise generate it
+    # Retrieve bwa mem .bam alignment if exists otherwise generate it
     if experimentSampleToAlignment.dataset_set.filter(type=Dataset.TYPE.BWA_ALIGN).exists():
         alignment_sorted = get_dataset_with_type(experimentSampleToAlignment, Dataset.TYPE.BWA_ALIGN).get_absolute_location()
     else:
@@ -48,72 +50,59 @@ def generate_contigs(experimentSampleToAlignment, contig_ref_genome):
     alignment_prefix = os.path.join(data_dir, 'bwa_align')
 
     # Extract SV indicating reads
-    unmapped_reads = alignment_prefix + ".alignment.unmapped.bam"
+    unmapped_reads = alignment_prefix + ".unmapped.bam"
     de_novo_bam.millstone_de_novo_fns.get_unmapped_reads(alignment_sorted, unmapped_reads)
 
-    split_reads = alignment_prefix + ".alignment.split.bam"
+    split_reads = alignment_prefix + ".split.bam"
     de_novo_bam.millstone_de_novo_fns.get_split_reads(alignment_sorted, split_reads)
 
-    clipped_reads = alignment_prefix + ".alignment.clipped.bam"
+    clipped_reads = alignment_prefix + ".clipped.bam"
     de_novo_bam.millstone_de_novo_fns.get_clipped_reads(alignment_sorted, clipped_reads)
 
     # Aggregate SV indicants
-    SV_indicants_bam = alignment_prefix + ".alignment.SV_indicants.bam"
+    SV_indicants_bam = alignment_prefix + ".SV_indicants.bam"
     de_novo_bam.concatenate_bams([unmapped_reads, split_reads, clipped_reads], SV_indicants_bam)
 
-    print "Make split_unmapped sam"
-    # Make split_unmapped sam (for add_paired_mates)
-    SV_indicants_sam = alignment_prefix + ".alignment.SV_indicants.sam"
-    de_novo_bam.make_sam(SV_indicants_bam, SV_indicants_sam)
+    # Remove duplicates -- samtools rmdup has known bugs
+    SV_indicants_no_dups_bam = alignment_prefix + ".SV_indicants_no_dups.bam"
+    de_novo_bam.rmdup(SV_indicants_bam, SV_indicants_no_dups_bam) 
 
-    print "Add mate pairs"
-    # Add mate pairs - samtools header error if try to view unmapped_and_split.sam, but can view bam
-    SV_indicants_with_pairs_sam = alignment_prefix + ".alignment.SV_indicants_with_pairs.sam"
+    # Convert SV indicants bam to sam
+    SV_indicants_sam = alignment_prefix + ".SV_indicants.sam"
+    de_novo_bam.make_sam(SV_indicants_no_dups_bam, SV_indicants_sam)
+
+    # Add mate pairs to SV indicants sam
+    SV_indicants_with_pairs_sam = alignment_prefix + ".SV_indicants_with_pairs.sam"
     de_novo_bam.millstone_de_novo_fns.add_paired_mates(SV_indicants_sam, alignment_sorted, SV_indicants_with_pairs_sam)
 
-    print "Make bam of mate pairs"
-    # Make bam of mate pairs
-    SV_indicants_with_pairs_bam = alignment_prefix + ".alignment.SV_indicants_with_pairs.bam"
+    # Make bam of SV indicants w/mate pairs
+    SV_indicants_with_pairs_bam = alignment_prefix + ".SV_indicants_with_pairs.bam"
     de_novo_bam.make_bam(SV_indicants_with_pairs_sam, SV_indicants_with_pairs_bam)
 
-    # print "Sorting prior to duplicate removal"
-    # de_novo_bam.sort_bam(SV_indicants_with_pairs_bam)
-
-    # print "Remove duplicates"
-    # # Remove duplicates -- samtools rmdup has known bugs
-    # de_novo_bam.rmdup(SV_indicants_with_pairs_bam) 
-
-    print "Assemble with velvet"
-    kmer_list = [31] #range(11,33,2)
+    # Velvet assembly
     contig_files = []
-    for kmer_length in kmer_list:
-        print "assembling with kmer length " + str(kmer_length)
-
-        opt_dict = {
-            'velveth': {
-                'hash_length': kmer_length,
-                'shortPaired': ''
-            },
-            'velvetg': {
-                'cov_cutoff':3
-            }
+    opt_dict = {
+        'velveth': {
+            'shortPaired': ''
+        },
+        'velvetg': {
+            'cov_cutoff':VELVET_COVERAGE_CUTOFF
         }
+    }
+    kmer_list = VELVET_KMER_LIST
+    for kmer_length in kmer_list:
+        # Set hash length argument for velveth
+        opt_dict['velveth']['hash_length'] = kmer_length
 
+        # Run velvet assembly on SV indicants
         velvet_dir = os.path.join(data_dir, "velvet_k" + str(kmer_length))
         de_novo_bam.run_velvet(
                 SV_indicants_with_pairs_bam,
                 velvet_dir,
                 opt_dict)
 
-        contigs_fasta = os.path.join(velvet_dir,"contigs.fa")
+        # Collect resulting contigs fasta
+        contigs_fasta = os.path.join(velvet_dir, "contigs.fa")
         contig_files.append(contigs_fasta)
 
     return contig_files
-
-        # # Align contigs
-        # contigs = os.path.join(velvet_dir, "contigs.fa")
-        # de_novo_bam.bwa_align(
-        #         [contigs],
-        #         actual_genome,
-        #         os.path.join(contig_alignment_dir, "k" + str(kmer_length) + ".alignment.bam")
-        # )

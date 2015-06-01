@@ -44,12 +44,6 @@ gd.AlignmentView = Backbone.View.extend({
       return;
     }
 
-    // Get new genome name
-    contigGenomeLabel = prompt("Enter a name for the contigs to be assembled:", "contigs_1")
-    if (!contigGenomeLabel) {
-        alert("Please enter a name for the contigs")
-    }
-    else {
     var formJqueryObj = $('#gd-contig-export-form');
 
     // Reset the form html
@@ -58,12 +52,9 @@ gd.AlignmentView = Backbone.View.extend({
     // Append the form fields.
     this._appendInputFieldToForm(formJqueryObj, 'experiment_sample_uid',
         experimentSampleUidList[0]);
-    this._appendInputFieldToForm(formJqueryObj, 'contig_label',
-        contigGenomeLabel);
 
     // Submit the form. This cause a download to start.
     formJqueryObj.submit();
-    }
   },
 
  /** Helper method to append input value to form. */

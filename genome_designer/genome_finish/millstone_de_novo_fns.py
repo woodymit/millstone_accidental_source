@@ -22,11 +22,13 @@ def get_clipped_reads(bam_filename, output_filename):
                 GENOME_FINISH_PATH,
                 'extractClippedReads'))
 
-   # try:
-    fh = open(output_filename, 'w')
-    subprocess.check_call(cmd, stdout=fh, shell=True, executable=BASH_PATH)
-    fh.close()
-
+    try:
+        fh = open(output_filename, 'w')
+        subprocess.check_call(cmd, stdout=fh, shell=True, executable=BASH_PATH)
+        fh.close()
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError("command '{}' return with error (code {}): {}".format(e.cmd, e.returncode, e.output))
+    
     # sort the split reads, overwrite the old file
     subprocess.check_call([SAMTOOLS_BINARY, 'sort', output_filename,
             os.path.splitext(output_filename)[0]])
@@ -45,15 +47,11 @@ def get_match_counts(bam_filename):
         output=subprocess.check_output(cmd, shell=True, executable=BASH_PATH)
     except subprocess.CalledProcessError as e:
         raise RuntimeError("command '{}' return with error (code {}): {}".format(e.cmd, e.returncode, e.output))
-        # print 'subprocess returncode:', (e.returncode)
-        # print 'subprocess output:', output
+
     return pickle.loads(output)
 
 
 def get_unmapped_reads(bam_filename, output_filename):
-
-    unmapped_reads_bam_file = output_filename
-
     cmd = '{samtools} view -h -b -f 0x4 {bam_filename}'.format(
             samtools=SAMTOOLS_BINARY,
             bam_filename=bam_filename)

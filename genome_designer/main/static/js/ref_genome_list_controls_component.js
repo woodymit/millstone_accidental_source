@@ -241,6 +241,11 @@ gd.RefGenomeControlsComponent = gd.DataTableControlsComponent.extend({
         '<a href="#" class="gd-id-refgenomes-concatenate">Concatenate</a>';
     this.addDropdownOption(concatenateOptionHtml);
     $('.gd-id-refgenomes-concatenate').click(_.bind(this.handleConcatenate, this));
+
+    var toggleDeNovoAssembliesOptionHtml = 
+        '<a href="#" class="gd-id-refgenomes-toggle-de-novo-assemblies">Hide/Show De Novo Assemblies</a>';
+    this.addDropdownOption(toggleDeNovoAssembliesOptionHtml);
+    $('.gd-id-refgenomes-toggle-de-novo-assemblies').click(_.bind(function() {this.trigger('TOGGLE_DE_NOVO');},this))
   },
 
   /** Sends request to delete selected samples. */

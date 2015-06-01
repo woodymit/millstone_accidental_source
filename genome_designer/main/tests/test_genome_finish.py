@@ -142,7 +142,7 @@ class TestGenomeConcatenation(TestCase):
         response = xhr_handlers.generate_contigs(request)
 
         # Assert contigs were generated
-        contig_ref_label = ' :: '.join([ins_1kb_ref.label, contig_label])
+        contig_ref_label = '_'.join([ins_1kb_ref.label, ins_1kb_reads.label, 'de_novo_contigs'])
         assert len(ReferenceGenome.objects.filter(label=contig_ref_label))==1
 
         contig_ref = ReferenceGenome.objects.get(label=contig_ref_label)
@@ -193,7 +193,7 @@ class TestGenomeConcatenation(TestCase):
         response = xhr_handlers.generate_contigs(request)
 
         # Assert contigs were generated
-        contig_ref_label = ' :: '.join([ins_1kb_ref.label, contig_label])
+        contig_ref_label = '_'.join([ins_1kb_ref.label, ins_1kb_reads.label, 'de_novo_contigs'])
         assert len(ReferenceGenome.objects.filter(label=contig_ref_label))==1
 
         contig_ref = ReferenceGenome.objects.get(label=contig_ref_label)
@@ -225,16 +225,6 @@ class TestGenomeConcatenation(TestCase):
             alignment_group=alignment_group,
             experiment_sample=ins_1kb_reads)
 
-
-        # #DEBUG:
-        # alignment_bam = get_dataset_with_type(reads_align, Dataset.TYPE.BWA_ALIGN).get_absolute_location()
-        # alignment_sam = alignment_bam[:-3] + 'sam'
-        # de_novo_bam.make_sam(alignment_bam)
-        # with open(alignment_sam,'r') as fh:
-        #     for line in fh:
-        #         print line
-
- 
         # House the contigs in a ReferenceGenome
         contigs_ref_genome = ReferenceGenome.objects.create(project=self.project,
             label='ins_contigs')

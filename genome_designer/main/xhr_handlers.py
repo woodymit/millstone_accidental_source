@@ -34,6 +34,7 @@ from main.model_views import adapt_gene_list_to_frontend
 from main.model_views import get_all_fields
 from main.model_views import adapt_variant_to_frontend
 from main.models import AlignmentGroup
+from main.models import Chromosome
 from main.models import Dataset
 from main.models import ExperimentSample
 from main.models import ExperimentSampleToAlignment
@@ -224,6 +225,34 @@ def ref_genomes_concatenate(request):
 
     # Return success response.
     return HttpResponse(json.dumps({}), content_type='application/json')
+
+
+@login_required
+@require_GET
+def ref_genomes_download(request):
+    """Downloads requested fasta/genbank file
+    """
+    file_format = request.GET['file_format']
+    reference_genome = get_object_or_404(ReferenceGenome, uid=request.GET['reference_genome_uid'])
+    if file_format == 'fasta':
+        file_path = reference_genome.dataset_set.get(
+            type=Dataset.TYPE.REFERENCE_GENOME_FASTA).get_absolute_location()
+        file_name = '.'.join([reference_genome.label, 'fa'])
+    elif file_format == 'genbank':
+        file_path = reference_genome.dataset_set.get(
+            type=Dataset.TYPE.REFERENCE_GENOME_GENBANK).get_absolute_location()
+        file_name = '.'.join([reference_genome.label, 'gb'])
+    else:
+        raise Http404
+
+    wrapper = FileWrapper(file(file_path))
+    response = StreamingHttpResponse(wrapper, content_type='text/plain')
+    response['Content-Disposition'] = 'attachment; filename="{0}"'.format(file_name)
+    response['Content-Length'] = os.path.getsize(file_path)
+
+    print "response['Content-Length']:",response['Content-Length']
+
+    return response
 
 
 @login_required
@@ -956,11 +985,34 @@ def get_ref_genomes(request):
             owner=request.user.get_profile(),
             uid=project_uid)
 
-    response_data = adapt_model_to_frontend(ReferenceGenome, 
-            {'project' : project})
+    filters = {'project' : project}
+
+    # If hiding de_novo_assemblies, generate a list of uids from non-assemblies
+    # from the metadata json field of a ReferenceGenome to use as a filter in
+    # when adapting the model to the front end
+    show_de_novo = int(request.GET.get('show_de_novo', 1))
+    if not show_de_novo:
+        uid_list = []
+        for rg in ReferenceGenome.objects.all():
+            if not rg.metadata.get('is_from_de_novo_assembly', False):
+                uid_list.append(rg.uid)
+        filters['uid__in'] = uid_list
+    
+    response_data = adapt_model_to_frontend(ReferenceGenome, filters)
 
     return HttpResponse(response_data,
             content_type='application/json')
+
+
+@login_required
+@require_GET
+def get_single_ref_genome(request):
+    reference_genome_uid = request.GET.get('referenceGenomeUid')
+    response_data = adapt_model_to_frontend(Chromosome,
+        {'reference_genome__uid' : reference_genome_uid})
+
+    return HttpResponse(response_data,
+        content_type='applicaotion/json')
 
 
 @login_required
@@ -1110,24 +1162,25 @@ def generate_contigs(request):
     unmapped and split reads of the passed ExperimentSampleToAlignment
     """
 
-    # Retrieve contig label
-    contig_label = request.GET.get('contig_label')
-
     # Retrieve ExperimentSampleToAlignment
     experiment_sample_uid = request.GET.get('experiment_sample_uid')
     experiment_sample_to_alignment = get_object_or_404(ExperimentSampleToAlignment,
             alignment_group__reference_genome__project__owner=request.user.get_profile(),
             uid=experiment_sample_uid)
 
-
     # Get reference genome
     reference_genome = experiment_sample_to_alignment.alignment_group.reference_genome
 
+    # Generate name for contigs
+    sample_label = experiment_sample_to_alignment.experiment_sample.label
+    ref_label = reference_genome.label
+    contig_ref_genome_label = '_'.join([ref_label, sample_label, 'de_novo_contigs'])
+
     # Create a reference genome for the contigs
-    contig_ref_genome_label = ' :: '.join([reference_genome.label, contig_label])
     contig_ref_genome = ReferenceGenome.objects.create(
             project=reference_genome.project,
             label=contig_ref_genome_label)
+    contig_ref_genome.metadata['is_from_de_novo_assembly'] = True
 
     # Generate a list of fasta file paths to the contigs
     contig_files = assembly.generate_contigs(experiment_sample_to_alignment, contig_ref_genome)
@@ -1139,17 +1192,10 @@ def generate_contigs(request):
     contig_ref_genome_dataset = add_dataset_to_entity(contig_ref_genome,
             'raw_contigs', Dataset.TYPE.REFERENCE_GENOME_FASTA, contig_file)
 
-
-    # # Delete contigs dataset if already exists
-    # if reference_genome.dataset_set.filter(type = Dataset.TYPE.CONTIGS_FASTA).exists():
-    #     print "DEBUG: Old CONTIGS_FASTA dataset deleted"
-    #     reference_genome.dataset_set.get(type = Dataset.TYPE.CONTIGS_FASTA).delete()
-
-    # # Add contigs to reference genome
-    # copy_and_add_dataset_source(reference_genome, "contigs", Dataset.TYPE.CONTIGS_FASTA, contig_file)
+    # Start download of contigs fasta file
     wrapper = FileWrapper(file(contig_file))
     response = StreamingHttpResponse(wrapper, content_type='text/plain')
-    response['Content-Disposition'] = 'attachment; filename="contigs.fa"'
+    response['Content-Disposition'] = 'attachment; filename="{0}"'.format(contig_ref_genome_label + '.fa')
     response['Content-Length'] = os.path.getsize(contig_file)
     return response
 

@@ -8,14 +8,14 @@ import re
 
 def get_clipped_reads(inFile, outFile=None, clipping_threshold=8):
 
-    # if outFile:
-    #     out_data = open(outFile, 'w+')
+    if outFile:
+        out_data = open(outFile, 'w+')
 
-    # def write_out(line):
-    #     if outFile:
-    #         out_data.write(line)
-    #     else:
-    #         print line
+    def write_out(line):
+        if outFile:
+            out_data.write(line)
+        else:
+            print line
 
     if inFile == "stdin":
         data = sys.stdin
@@ -33,32 +33,17 @@ def get_clipped_reads(inFile, outFile=None, clipping_threshold=8):
                 split = 1
 
         if not split: #So as to not repeat reads from extractSplitReads
-            read1 = sam.flag & 64 
-            #if read1 == 64: tag = "_1"
-            #else: tag="_2"
+            read1 = sam.flag & 64
             samList[0] = sam.query# + tag 
             readCigar = sam.cigar
             readCigarOps = extractCigarOps(readCigar,sam.flag)
 
             # readCigarOps is a list of the form [cigar, cigar, cigar]
             # where cigar.op and cigar.length are the letter and number
-
-
             for cigar_op in readCigarOps:
                 if cigar_op.op in ['H','S'] and cigar_op.length >= clipping_threshold:
                     print "\t".join(samList)
                     continue
-
-
-            # readQueryPos = calcQueryPosFromCigar(readCigarOps)
-            # mateCigarOps = extractCigarOps(mateCigar,mateFlag)
-            # mateQueryPos = calcQueryPosFromCigar(mateCigarOps)
-            # overlap = calcQueryOverlap(readQueryPos.qsPos,readQueryPos.qePos,mateQueryPos.qsPos,mateQueryPos.qePos)
-            # nonOverlap1 = 1 + readQueryPos.qePos - readQueryPos.qsPos - overlap
-            # nonOverlap2 = 1 + mateQueryPos.qePos - mateQueryPos.qsPos - overlap
-            # mno = min(nonOverlap1, nonOverlap2)
-            # if mno >= minNonOverlap:
-            #     print "\t".join(samList)
 
 #--------------------------------------------------------------------------------------------------
 # functions
@@ -183,12 +168,11 @@ class Usage(Exception):
 
 def main():
     
-    usage = """%prog -i <file>
+    usage = """
+    %prog -i <file>
 
-extractSplitReads_BwaMem v0.1.0
-Author: Ira Hall    
-Description: Get split-read alignments from bwa-mem in lumpy compatible format. Ignores reads marked as duplicates.
-Works on read or position sorted SAM input. Tested on bwa mem v0.7.5a-r405. 
+    SAM parsing helper functions taken from lumpy's extractSplitReads
+    authored by Ira Hall under the MIT license
     """
     parser = OptionParser(usage)
     
