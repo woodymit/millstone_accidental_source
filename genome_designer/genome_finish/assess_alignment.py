@@ -2,7 +2,9 @@
 
 from optparse import OptionParser
 import pickle
-from sam_parse import *
+from sam_parse import extractCigarOps
+from sam_parse import SAM
+
 import sys
 
 
@@ -39,11 +41,6 @@ def count_matches(inFile):
             match_counts[sam.query] = [match_count]
 
     return match_counts
-
-
-class Usage(Exception):
-    def __init__(self, msg):
-        self.msg = msg
 
 
 def main():

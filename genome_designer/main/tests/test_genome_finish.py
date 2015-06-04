@@ -8,21 +8,21 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.http.request import HttpRequest
-from django.test import TestCase
 from django.test import Client
+from django.test import TestCase
 
 from genome_finish.millstone_de_novo_fns import get_match_counts
-from utils.bam_utils import minimal_bwa_align
+from main.model_utils import get_dataset_with_type
 from main.models import AlignmentGroup
 from main.models import Dataset
 from main.models import ExperimentSample
 from main.models import ExperimentSampleToAlignment
 from main.models import Project
 from main.models import ReferenceGenome
-from main.model_utils import get_dataset_with_type
 import main.xhr_handlers as xhr_handlers
 from pipeline.pipeline_runner import run_pipeline
 from utils import convert_fasta_to_fastq
+from utils.bam_utils import minimal_bwa_align
 from utils.import_util import add_dataset_to_entity
 from utils.import_util import import_reference_genome_from_local_file
 

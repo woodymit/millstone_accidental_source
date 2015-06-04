@@ -2,10 +2,11 @@
 SAM parsing helper functions taken from lumpy's extractSplitReads
 authored by Ira Hall under the MIT license
 """
+
 import re
 
 
-class SAM (object):
+class SAM(object):
     """
     __very__ basic class for SAM input.
     """

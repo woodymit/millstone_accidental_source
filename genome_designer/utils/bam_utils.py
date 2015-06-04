@@ -7,6 +7,7 @@ import shutil
 import subprocess
 
 from django.conf import settings
+
 from utils import convert_fasta_to_fastq
 
 BWA_BINARY = os.path.join(settings.TOOLS_DIR, 'bwa/bwa')

@@ -45,11 +45,6 @@ def get_clipped_reads(inFile, outFile=None, clipping_threshold=8):
                     continue
 
 
-class Usage(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
-
 def main():
 
     usage = """%prog -i <file>"""
