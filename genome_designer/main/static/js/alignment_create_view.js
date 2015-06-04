@@ -18,6 +18,7 @@ gd.AlignmentCreateView = Backbone.View.extend({
     this.nameInput = $('#gd-alignment-create-name-input');
     this.skipHetOnly = $('#gd-alignment-options-skip-het-only')[0];
     this.callAsHaploid = $('#gd-alignment-options-call-as-haploid')[0];
+    this.callStructuralVariants = $('#gd-alignment-options-call-structural-variants')[0];
 
     this.redrawRefGenomeDatatable();
     this.redrawSampleControlsDatatable();
@@ -106,7 +107,8 @@ gd.AlignmentCreateView = Backbone.View.extend({
         refGenomeUidList: this.refGenomeDataTable.getCheckedRowUids(),
         sampleUidList: this.samplesDatatable.getCheckedRowUids(),
         skipHetOnly: this.skipHetOnly.checked,
-        callAsHaploid: this.callAsHaploid.checked
+        callAsHaploid: this.callAsHaploid.checked,
+        callStructuralVariants: this.callStructuralVariants.checked
     };
 
     // Validate the data.

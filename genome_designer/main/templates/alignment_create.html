@@ -55,22 +55,25 @@
       <div class="panel-heading">Ambiguous Single Nucleotide Variants</div>
       <div class="panel-body">
         <div class="radio">
-          <label>
-            <input type="radio" name="alignment_options" id="gd-alignment-options-keep-all" value="" checked>
-            Keep all variants, including ambiguous (het) calls
-          </label>
+          <input type="radio" name="alignment_options" id="gd-alignment-options-keep-all" value="" checked>
+          Keep all variants, including ambiguous (het) calls
         </div>
         <div class="radio">
-          <label>
-            <input type="radio" name="alignment_options" id="gd-alignment-options-skip-het-only" value="skip_het_only">
-            Discard variants with only ambiguous (het) calls
-          </label>
+          <input type="radio" name="alignment_options" id="gd-alignment-options-skip-het-only" value="skip_het_only">
+          Discard variants with only ambiguous (het) calls
         </div>
         <div class="radio">
-          <label>
-            <input type="radio" name="alignment_options" id="gd-alignment-options-call-as-haploid" value="call_as_haploid">
-            Call variants as haploid (no ambiguous calls)
-          </label>
+          <input type="radio" name="alignment_options" id="gd-alignment-options-call-as-haploid" value="call_as_haploid">
+          Call variants as haploid (no ambiguous calls)
+        </div>
+      </div>
+    </div>
+    <div class="panel panel-default">
+      <div class="panel-heading">Structural Variant Calling</div>
+      <div class="panel-body">
+        <div class="checkbox">
+          <input type="checkbox" id="gd-alignment-options-call-structural-variants" value="call-structural-variants">
+          Assemble structural variants and store in new Reference Genome with name ReferenceGenomeLabel_ExperimentSampleLabel_de_novo_contigs
         </div>
       </div>
     </div>

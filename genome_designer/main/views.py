@@ -382,7 +382,7 @@ def _start_new_alignment(request, project):
     # Make sure the required keys are present.
     REQUIRED_KEYS = [
             'name', 'refGenomeUidList', 'sampleUidList', 'skipHetOnly',
-            'callAsHaploid']
+            'callAsHaploid', 'callStructuralVariants']
 
     if not all(key in request_data for key in REQUIRED_KEYS):
         return HttpResponseBadRequest("Invalid request. Missing keys.")
@@ -426,10 +426,22 @@ def _start_new_alignment(request, project):
             alignment_options['call_as_haploid'] = True
 
         # Kick off alignments.
-        run_pipeline(
+        alignment_group, _ = run_pipeline(
                 alignment_group_name,
                 ref_genome, sample_list,
                 alignment_options=alignment_options)
+
+        # If requested, call structural variants
+        if request_data['callStructuralVariants']:
+            assert len(sample_list) == 1, (
+                    "Currently calling structural variants is only " +
+                    "supported for one experiment sample, support for " +
+                    "multiple experiment samples is under development")
+
+            experiment_sample_to_alignment = (
+                    ExperimentSampleToAlignment.objects.get(
+                        alignment_group=alignment_group,
+                        experiment_sample=sample_list[0]))
 
         # Success. Return a redirect response.
         response_data = {
